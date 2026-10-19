@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# ...but the vendored Vditor runtime assets must be committed:
+!public/vditor-dist/dist/
 .astro/
 *.log
 .DS_Store
