@@ -356,7 +356,19 @@ body {
   font-size: 1.12rem;
   line-height: 2;
   color: var(--color-text-body);
-  margin: 0 0 1.6rem;
+  margin: 0;
+}
+.slj-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em 1em;
+  margin: 1em 0 1.6rem;
+  padding: 0;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+.slj-tags span {
+  white-space: nowrap;
 }
 .slj-article-head .ph {
   aspect-ratio: 21 / 9;

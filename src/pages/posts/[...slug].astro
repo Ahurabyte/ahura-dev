@@ -23,6 +23,7 @@ const idx = posts.findIndex((p) => p.slug === slug);
 const prev = idx > 0 ? posts[idx - 1] : null;
 const next = idx >= 0 && idx < posts.length - 1 ? posts[idx + 1] : null;
 const image = posts[idx]?.image ?? withBase(FALLBACK_IMAGE);
+const tags = posts[idx]?.tags ?? [];
 ---
 
 <BaseLayout title={`${frontmatter.title} — اهورا.dev`} description={frontmatter.description}>
@@ -32,6 +33,11 @@ const image = posts[idx]?.image ?? withBase(FALLBACK_IMAGE);
       <time>{faDate(frontmatter.pubDate)}</time>
       <h1>{frontmatter.title}</h1>
       <p class="lede">{frontmatter.description}</p>
+      {tags.length > 0 && (
+        <p class="slj-tags">
+          {tags.map((t) => <span>#{t}</span>)}
+        </p>
+      )}
     </div>
     <div class="ph">
       <img src={image} alt="" />
