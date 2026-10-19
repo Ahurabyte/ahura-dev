@@ -1,0 +1,362 @@
+---
+import AdminShell from "../../components/admin/AdminShell.astro";
+---
+
+<AdminShell title="استودیو نوشتن" page="writing" fluid>
+  <div id="studio" class="studio" hidden>
+    <!-- ============ LEFT: documents ============ -->
+    <aside class="studio-left" id="studioLeft">
+      <div class="st-left-actions">
+        <button id="btnNewDoc" class="adm-btn st-new-btn">＋ سند جدید</button>
+        <button id="btnImport" class="adm-btn adm-btn-ghost" title="وارد کردن فایل Markdown">وارد کردن</button>
+      </div>
+      <input id="docSearch" class="adm-input st-search" placeholder="جستجو در عنوان و متن..." autocomplete="off" />
+      <div class="st-filter-row">
+        <select id="filterType" class="adm-input st-select" title="نوع سند">
+          <option value="">همه‌ی نوع‌ها</option>
+          <option value="note">یادداشت</option>
+          <option value="article">مقاله</option>
+          <option value="docs">مستندات فنی</option>
+          <option value="research">یادداشت پژوهشی</option>
+          <option value="newsletter">پیش‌نویس خبرنامه</option>
+        </select>
+        <select id="filterStatus" class="adm-input st-select" title="وضعیت">
+          <option value="active">فعال</option>
+          <option value="archived">بایگانی‌شده</option>
+          <option value="trashed">سطل زباله</option>
+        </select>
+      </div>
+      <div class="st-folders-head">
+        <span>پوشه‌ها</span>
+        <button id="btnNewFolder" class="st-mini-btn" title="پوشه‌ی جدید">＋</button>
+      </div>
+      <div id="folderList" class="st-folders"></div>
+      <div id="docList" class="st-docs"></div>
+      <div id="docListEmpty" class="st-empty" hidden>
+        <p>هنوز سندی نیست.</p>
+        <p class="st-empty-sub">«سند جدید» رو بزن و شروع کن به نوشتن.</p>
+      </div>
+    </aside>
+
+    <!-- ============ CENTER: editor ============ -->
+    <main class="studio-center" id="studioCenter">
+      <div class="st-topbar">
+        <button id="btnToggleLeft" class="st-icon-btn" title="نمایش/پنهان کردن فهرست اسناد">☰</button>
+        <input id="docTitle" class="st-title-input" placeholder="عنوان سند..." autocomplete="off" />
+        <span id="saveStatus" class="st-save-status" title="وضعیت ذخیره‌سازی"></span>
+        <div class="st-modes" id="modeSwitcher" title="حالت ویرایش">
+          <button data-mode="wysiwyg" title="WYSIWYG — ویرایش مستقیم قالب‌بندی‌شده">WYSIWYG</button>
+          <button data-mode="ir" title="Instant Rendering — رندر آنی مثل Typora">IR</button>
+          <button data-mode="sv" title="Split View — کد و پیش‌نمایش کنار هم">Split</button>
+        </div>
+        <button id="btnFocus" class="st-icon-btn" title="حالت تمرکز (پنهان کردن پنل‌ها)">◉</button>
+        <div class="st-menu-wrap">
+          <button id="btnMore" class="st-icon-btn" title="ابزارهای بیشتر">⋯</button>
+          <div id="moreMenu" class="st-menu" hidden>
+            <button data-act="export-md">دانلود Markdown</button>
+            <button data-act="copy-md">کپی سورس Markdown</button>
+            <button data-act="copy-html">کپی به‌صورت HTML</button>
+            <button data-act="print">چاپ / PDF</button>
+            <button data-act="manual-save">ذخیره‌ی دستی (ساخت ریویژن)</button>
+          </div>
+        </div>
+        <button id="btnToggleRight" class="st-icon-btn" title="نمایش/پنهان کردن پنل اطلاعات">◧</button>
+      </div>
+      <div id="conflictBanner" class="st-conflict" hidden></div>
+      <div id="recoveryBanner" class="st-recovery" hidden></div>
+      <div id="vditor" class="st-vditor" dir="ltr"></div>
+      <div id="studioWelcome" class="st-welcome" hidden>
+        <h2>استودیو نوشتن</h2>
+        <p>یک سند رو از فهرست انتخاب کن یا سند جدید بساز.</p>
+        <button id="btnWelcomeNew" class="adm-btn">＋ سند جدید</button>
+      </div>
+    </main>
+
+    <!-- ============ RIGHT: stats & meta ============ -->
+    <aside class="studio-right" id="studioRight">
+      <div class="st-right-section">
+        <h3>آمار سند</h3>
+        <div id="docStats" class="st-stats">
+          <div><span>کلمات</span><b id="statWords">۰</b></div>
+          <div><span>نویسه‌ها</span><b id="statChars">۰</b></div>
+          <div><span>نویسه‌ها (بدون فاصله)</span><b id="statCharsNoSpace">۰</b></div>
+          <div><span>پاراگراف‌ها</span><b id="statParas">۰</b></div>
+          <div><span>تیترها</span><b id="statHeadings">۰</b></div>
+          <div><span>زمان مطالعه</span><b id="statReading">۰ دقیقه</b></div>
+        </div>
+      </div>
+      <div class="st-right-section">
+        <h3>مشخصات</h3>
+        <div class="st-meta">
+          <label>نوع سند
+            <select id="metaType" class="adm-input">
+              <option value="note">یادداشت</option>
+              <option value="article">مقاله</option>
+              <option value="docs">مستندات فنی</option>
+              <option value="research">یادداشت پژوهشی</option>
+              <option value="newsletter">پیش‌نویس خبرنامه</option>
+            </select>
+          </label>
+          <label>پوشه
+            <select id="metaFolder" class="adm-input"><option value="">بدون پوشه</option></select>
+          </label>
+          <label>برچسب‌ها (با ویرگول جدا کن)
+            <input id="metaTags" class="adm-input" placeholder="مثلاً: ایده، پیش‌نویس" autocomplete="off" />
+          </label>
+          <div class="st-meta-row">
+            <button id="btnPin" class="adm-btn adm-btn-ghost st-small">سنجاق</button>
+            <button id="btnDuplicate" class="adm-btn adm-btn-ghost st-small">تکثیر</button>
+          </div>
+          <div class="st-meta-row">
+            <button id="btnArchive" class="adm-btn adm-btn-ghost st-small">بایگانی</button>
+            <button id="btnTrash" class="adm-btn adm-btn-ghost st-small st-danger">حذف</button>
+          </div>
+          <div class="st-doc-info" id="docInfo"></div>
+        </div>
+      </div>
+      <div class="st-right-section">
+        <h3>تاریخچه‌ی نسخه‌ها</h3>
+        <div id="revisionList" class="st-revisions"><div class="st-empty-sub">نسخه‌ای ثبت نشده.</div></div>
+      </div>
+    </aside>
+  </div>
+
+  <input type="file" id="importFile" accept=".md,.markdown,.txt,text/markdown" hidden />
+
+  <div id="revisionModal" class="st-modal" hidden>
+    <div class="st-modal-card">
+      <h3>پیش‌نمایش نسخه</h3>
+      <div class="st-modal-meta" id="revisionMeta"></div>
+      <pre class="st-modal-preview" id="revisionPreview" dir="auto"></pre>
+      <div class="st-modal-actions">
+        <button id="revisionRestore" class="adm-btn">بازیابی این نسخه</button>
+        <button id="revisionClose" class="adm-btn adm-btn-ghost">بستن</button>
+      </div>
+      <p class="st-empty-sub">بازیابی، محتوای فعلی رو به‌عنوان نسخه‌ی جدید ذخیره می‌کنه؛ چیزی گم نمی‌شه.</p>
+    </div>
+  </div>
+
+  <script>
+    import { initStudio } from "../../lib/studio.ts";
+    initStudio();
+  </script>
+
+  <style is:global>
+    .studio {
+      display: flex;
+      height: calc(100vh - 57px);
+      overflow: hidden;
+      background: var(--adm-bg, #f7efe4);
+      color: var(--adm-text, #2e2b22);
+    }
+    html.dark .studio { --adm-bg: #211d16; --adm-text: #ece4d3; }
+    .studio[hidden] { display: none; }
+
+    /* ---------- left panel ---------- */
+    .studio-left {
+      width: 290px;
+      flex: 0 0 290px;
+      border-inline-end: 1px solid var(--adm-border, #e0d9c8);
+      background: var(--adm-surface, #fffdf8);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: margin 0.2s ease;
+    }
+    html.dark .studio-left { --adm-surface: #2a251b; --adm-border: #453d2c; }
+    .studio.left-collapsed .studio-left { margin-inline-start: -290px; }
+    .st-left-actions { display: flex; gap: 8px; padding: 12px; }
+    .st-new-btn { flex: 1; }
+    .st-search { margin: 0 12px 8px; }
+    .st-filter-row { display: flex; gap: 8px; padding: 0 12px 8px; }
+    .st-select { flex: 1; font-size: 0.85rem; padding: 6px 8px; }
+    .st-folders-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 4px 14px; font-size: 0.8rem; font-weight: 700; opacity: 0.7;
+    }
+    .st-mini-btn {
+      border: 1px solid var(--adm-border, #e0d9c8); background: none; border-radius: 6px;
+      width: 24px; height: 24px; cursor: pointer; color: inherit; font-size: 1rem; line-height: 1;
+    }
+    .st-folders { padding: 0 8px 4px; max-height: 150px; overflow-y: auto; }
+    .st-folder {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 0.88rem;
+    }
+    .st-folder:hover { background: rgba(0,0,0,0.05); }
+    html.dark .st-folder:hover { background: rgba(255,255,255,0.06); }
+    .st-folder.active { background: rgba(0,0,0,0.08); font-weight: 700; }
+    html.dark .st-folder.active { background: rgba(255,255,255,0.1); }
+    .st-folder .st-count { opacity: 0.55; font-size: 0.78rem; }
+    .st-docs { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
+    .st-doc {
+      padding: 9px 10px; border-radius: 10px; cursor: pointer; margin-bottom: 4px;
+      border: 1px solid transparent;
+    }
+    .st-doc:hover { background: rgba(0,0,0,0.04); }
+    html.dark .st-doc:hover { background: rgba(255,255,255,0.05); }
+    .st-doc.active { border-color: var(--adm-border, #e0d9c8); background: rgba(0,0,0,0.04); }
+    html.dark .st-doc.active { background: rgba(255,255,255,0.06); }
+    .st-doc-title { font-weight: 700; font-size: 0.92rem; display: flex; gap: 6px; align-items: center; }
+    .st-doc-title .pin { color: #b98a2f; }
+    .st-doc-title .dirty-dot { color: #c0392b; font-size: 1.2em; line-height: 0; }
+    .st-doc-meta { font-size: 0.76rem; opacity: 0.6; margin-top: 3px; display: flex; gap: 8px; }
+    .st-doc-actions { display: none; gap: 4px; margin-top: 6px; }
+    .st-doc.active .st-doc-actions { display: flex; }
+    .st-doc-actions button {
+      font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; cursor: pointer;
+      border: 1px solid var(--adm-border, #e0d9c8); background: none; color: inherit;
+    }
+    .st-empty { padding: 30px 16px; text-align: center; opacity: 0.65; }
+    .st-empty-sub { font-size: 0.82rem; opacity: 0.65; }
+
+    /* ---------- center ---------- */
+    .studio-center { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .st-topbar {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      border-bottom: 1px solid var(--adm-border, #e0d9c8);
+      background: var(--adm-surface, #fffdf8);
+    }
+    html.dark .st-topbar { --adm-surface: #2a251b; --adm-border: #453d2c; }
+    .st-icon-btn {
+      border: 1px solid var(--adm-border, #e0d9c8); background: none; border-radius: 8px;
+      width: 34px; height: 34px; cursor: pointer; color: inherit; font-size: 1.05rem;
+      display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    }
+    .st-icon-btn:hover { background: rgba(0,0,0,0.05); }
+    .st-icon-btn.on { background: #2e2b22; color: #f7efe4; border-color: #2e2b22; }
+    html.dark .st-icon-btn.on { background: #ece4d3; color: #211d16; border-color: #ece4d3; }
+    .st-title-input {
+      flex: 1; min-width: 0; font-size: 1.15rem; font-weight: 800; font-family: inherit;
+      border: none; background: none; color: inherit; padding: 6px 4px; outline: none;
+    }
+    .st-title-input:focus { border-bottom: 2px solid #b98a2f; }
+    .st-save-status { font-size: 0.78rem; opacity: 0.7; white-space: nowrap; min-width: 90px; text-align: center; }
+    .st-save-status.saving { color: #b98a2f; }
+    .st-save-status.saved { color: #2e7d4f; }
+    .st-save-status.error { color: #c0392b; }
+    .st-modes { display: flex; border: 1px solid var(--adm-border, #e0d9c8); border-radius: 8px; overflow: hidden; }
+    .st-modes button {
+      border: none; background: none; color: inherit; padding: 7px 10px; cursor: pointer;
+      font-size: 0.75rem; font-weight: 700;
+    }
+    .st-modes button + button { border-inline-start: 1px solid var(--adm-border, #e0d9c8); }
+    .st-modes button.on { background: #2e2b22; color: #f7efe4; }
+    html.dark .st-modes button.on { background: #ece4d3; color: #211d16; }
+    .st-menu-wrap { position: relative; }
+    .st-menu {
+      position: absolute; inset-inline-end: 0; top: 40px; z-index: 60; min-width: 200px;
+      background: var(--adm-surface, #fffdf8); border: 1px solid var(--adm-border, #e0d9c8);
+      border-radius: 10px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    html.dark .st-menu { --adm-surface: #2a251b; --adm-border: #453d2c; }
+    .st-menu[hidden] { display: none; }
+    .st-menu button {
+      display: block; width: 100%; text-align: start; border: none; background: none;
+      color: inherit; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 0.88rem; font-family: inherit;
+    }
+    .st-menu button:hover { background: rgba(0,0,0,0.06); }
+    .st-conflict, .st-recovery {
+      padding: 10px 16px; font-size: 0.88rem; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    }
+    .st-conflict[hidden], .st-recovery[hidden] { display: none; }
+    .st-conflict { background: #fbe3e3; color: #7a1f1f; border-bottom: 1px solid #e5b4b4; }
+    html.dark .st-conflict { background: #4a2323; color: #f3c1c1; border-color: #6b3232; }
+    .st-recovery { background: #fdf3d8; color: #6b5312; border-bottom: 1px solid #e8d48a; }
+    html.dark .st-recovery { background: #4a3d1c; color: #f0dfa8; border-color: #6b5a2a; }
+    .st-conflict button, .st-recovery button {
+      border: 1px solid currentColor; background: none; color: inherit; border-radius: 6px;
+      padding: 4px 10px; cursor: pointer; font-size: 0.82rem; font-family: inherit;
+    }
+    .st-vditor { flex: 1; overflow: hidden; }
+    .st-vditor .vditor { border: none !important; height: 100%; }
+    .st-welcome { margin: auto; text-align: center; opacity: 0.75; padding: 40px; }
+    .st-welcome[hidden] { display: none; }
+    .st-welcome h2 { font-size: 1.6rem; margin-bottom: 8px; }
+
+    /* Vditor: RTL content for Persian, LTR for code/toolbar */
+    .st-vditor .vditor-wysiwyg, .st-vditor .vditor-ir { direction: rtl; }
+    .st-vditor .vditor-wysiwyg pre, .st-vditor .vditor-ir pre,
+    .st-vditor .vditor-sv, .st-vditor .vditor-preview { direction: ltr; }
+    .st-vditor .vditor-preview { text-align: start; }
+    .st-vditor .vditor-preview [dir="rtl"], .st-vditor .vditor-preview p,
+    .st-vditor .vditor-preview li, .st-vditor .vditor-preview blockquote,
+    .st-vditor .vditor-preview h1, .st-vditor .vditor-preview h2,
+    .st-vditor .vditor-preview h3, .st-vditor .vditor-preview h4,
+    .st-vditor .vditor-preview h5, .st-vditor .vditor-preview h6 { direction: rtl; text-align: right; }
+    .st-vditor .vditor-preview pre, .st-vditor .vditor-preview code { direction: ltr; text-align: left; }
+    .st-vditor .vditor-toolbar { direction: ltr; }
+
+    /* focus mode */
+    .studio.focus .studio-left, .studio.focus .studio-right { display: none; }
+    .studio.focus .st-topbar .st-icon-btn:not(#btnFocus):not(#btnToggleLeft):not(#btnToggleRight),
+    .studio.focus .st-topbar .st-menu-wrap { display: none; }
+    .studio.focus .st-vditor { max-width: 860px; margin: 0 auto; width: 100%; }
+
+    /* ---------- right panel ---------- */
+    .studio-right {
+      width: 270px; flex: 0 0 270px;
+      border-inline-start: 1px solid var(--adm-border, #e0d9c8);
+      background: var(--adm-surface, #fffdf8);
+      overflow-y: auto; padding: 14px;
+      transition: margin 0.2s ease;
+    }
+    html.dark .studio-right { --adm-surface: #2a251b; --adm-border: #453d2c; }
+    .studio.right-collapsed .studio-right { margin-inline-end: -270px; }
+    .st-right-section { margin-bottom: 22px; }
+    .st-right-section h3 { font-size: 0.85rem; margin: 0 0 10px; opacity: 0.7; }
+    .st-stats div {
+      display: flex; justify-content: space-between; font-size: 0.86rem;
+      padding: 5px 0; border-bottom: 1px dashed var(--adm-border, #e0d9c8);
+    }
+    .st-stats b { font-variant-numeric: tabular-nums; }
+    .st-meta label { display: block; font-size: 0.82rem; margin-bottom: 10px; opacity: 0.9; }
+    .st-meta .adm-input { width: 100%; margin-top: 4px; font-size: 0.88rem; }
+    .st-meta-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .st-small { flex: 1; font-size: 0.8rem; padding: 6px; }
+    .st-danger { color: #c0392b !important; border-color: #c0392b !important; }
+    .st-doc-info { font-size: 0.76rem; opacity: 0.6; margin-top: 8px; line-height: 1.8; }
+    .st-revisions { display: flex; flex-direction: column; gap: 6px; }
+    .st-rev {
+      border: 1px solid var(--adm-border, #e0d9c8); border-radius: 8px; padding: 8px 10px;
+      font-size: 0.8rem; cursor: pointer; background: none; color: inherit; text-align: start; font-family: inherit;
+    }
+    .st-rev:hover { background: rgba(0,0,0,0.04); }
+    .st-rev .st-rev-meta { opacity: 0.6; font-size: 0.72rem; margin-top: 2px; }
+
+    /* modal */
+    .st-modal {
+      position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .st-modal[hidden] { display: none; }
+    .st-modal-card {
+      background: var(--adm-surface, #fffdf8); color: var(--adm-text, #2e2b22);
+      border-radius: 14px; padding: 22px; max-width: 640px; width: 100%; max-height: 85vh; overflow-y: auto;
+    }
+    html.dark .st-modal-card { --adm-surface: #2a251b; --adm-text: #ece4d3; }
+    .st-modal-meta { font-size: 0.82rem; opacity: 0.65; margin-bottom: 10px; }
+    .st-modal-preview {
+      background: rgba(0,0,0,0.04); border-radius: 8px; padding: 12px;
+      max-height: 320px; overflow-y: auto; white-space: pre-wrap; font-size: 0.85rem;
+    }
+    html.dark .st-modal-preview { background: rgba(255,255,255,0.05); }
+    .st-modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+
+    /* responsive */
+    @media (max-width: 1100px) {
+      .studio-right { position: fixed; inset-inline-end: 0; top: 57px; bottom: 0; z-index: 50; box-shadow: -8px 0 24px rgba(0,0,0,0.1); }
+      .studio.right-collapsed .studio-right { margin-inline-end: -270px; }
+    }
+    @media (max-width: 820px) {
+      .studio-left {
+        position: fixed; inset-inline-start: 0; top: 57px; bottom: 0; z-index: 50;
+        box-shadow: 8px 0 24px rgba(0,0,0,0.1);
+      }
+      .studio.left-collapsed .studio-left { margin-inline-start: -290px; }
+      .st-modes button { padding: 7px 6px; font-size: 0.68rem; }
+      .st-save-status { display: none; }
+      .st-title-input { font-size: 1rem; }
+    }
+  </style>
+</AdminShell>

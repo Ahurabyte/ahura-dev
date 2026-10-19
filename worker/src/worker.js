@@ -513,6 +513,497 @@ async function campaignRecipientCount(db) {
   return row.c || 0;
 }
 
+/* ---------------- writing studio: documents ---------------- */
+
+const DOC_TYPES = new Set(["note", "article", "docs", "research", "newsletter"]);
+const DOC_STATUSES = new Set(["active", "archived", "trashed"]);
+const MAX_REVISIONS = 50;
+const REVISION_MIN_INTERVAL_MS = 30 * 60 * 1000;
+
+const IMAGE_TYPES = {
+  "image/png": { ext: "png", sigs: [{ offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }] },
+  "image/jpeg": { ext: "jpg", sigs: [{ offset: 0, bytes: [0xff, 0xd8, 0xff] }] },
+  "image/webp": {
+    ext: "webp",
+    sigs: [
+      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] },
+      { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] },
+    ],
+  },
+  "image/gif": { ext: "gif", sigs: [{ offset: 0, bytes: [0x47, 0x49, 0x46, 0x38] }] },
+};
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+
+function cleanTags(tags) {
+  return String(tags || "")
+    .split(",")
+    .map((t) => t.trim().slice(0, 60))
+    .filter(Boolean)
+    .slice(0, 20)
+    .join(",");
+}
+
+function countWords(text) {
+  const t = String(text || "");
+  if (!t.trim()) return 0;
+  // Unicode-aware: count sequences of letters/numbers (works for Persian, English, CJK).
+  const m = t.match(/[\p{L}\p{N}]+/gu);
+  return m ? m.length : 0;
+}
+
+async function maybeCreateRevision(db, doc, reason) {
+  const last = await db
+    .prepare("SELECT id, created_at, markdown_content FROM revisions WHERE document_id = ? ORDER BY id DESC LIMIT 1")
+    .bind(doc.id)
+    .first();
+  const changed = !last || last.markdown_content !== doc.markdown_content;
+  if (!changed) return;
+  const recentEnough =
+    last && Date.now() - new Date(last.created_at).getTime() < REVISION_MIN_INTERVAL_MS;
+  if (reason !== "manual" && recentEnough) return;
+  await db
+    .prepare(
+      "INSERT INTO revisions (document_id, title, markdown_content, version, reason) VALUES (?, ?, ?, ?, ?)"
+    )
+    .bind(doc.id, doc.title, doc.markdown_content, doc.version, reason)
+    .run();
+  // Keep only the newest MAX_REVISIONS per document.
+  await db
+    .prepare(
+      `DELETE FROM revisions WHERE document_id = ? AND id NOT IN
+       (SELECT id FROM revisions WHERE document_id = ? ORDER BY id DESC LIMIT ?)`
+    )
+    .bind(doc.id, doc.id, MAX_REVISIONS)
+    .run();
+}
+
+function docRow(r) {
+  return {
+    id: r.id,
+    title: r.title,
+    document_type: r.document_type,
+    folder_id: r.folder_id,
+    status: r.status,
+    is_pinned: !!r.is_pinned,
+    tags: r.tags,
+    version: r.version,
+    word_count: r.word_count,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+  };
+}
+
+async function handleDocuments(req, env, seg, url) {
+  const db = env.DB;
+
+  /* GET /api/admin/documents — list with search/filter/pagination */
+  if (seg.length === 3 && req.method === "GET") {
+    const status = url.searchParams.get("status") || "active";
+    const q = (url.searchParams.get("q") || "").trim().slice(0, 200);
+    const folderId = url.searchParams.get("folder_id");
+    const type = url.searchParams.get("type");
+    const tag = (url.searchParams.get("tag") || "").trim().slice(0, 60);
+    const sort = url.searchParams.get("sort") || "updated";
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1);
+    const perPage = Math.min(100, Math.max(5, parseInt(url.searchParams.get("per_page") || "20", 10) || 20));
+
+    const where = [];
+    const params = [];
+    if (DOC_STATUSES.has(status)) {
+      where.push("d.status = ?");
+      params.push(status);
+    }
+    if (folderId === "none") {
+      where.push("d.folder_id IS NULL");
+    } else if (folderId && /^\d+$/.test(folderId)) {
+      where.push("d.folder_id = ?");
+      params.push(parseInt(folderId, 10));
+    }
+    if (type && DOC_TYPES.has(type)) {
+      where.push("d.document_type = ?");
+      params.push(type);
+    }
+    if (tag) {
+      where.push("(',' || d.tags || ',') LIKE ?");
+      params.push(`%,${tag.replace(/[%_,]/g, "")},%`);
+    }
+
+    let fromSql, countSql;
+    if (q) {
+      // Full-text search over title + content; fall back gracefully on bad syntax.
+      let fts;
+      try {
+        fts = q.replace(/"/g, '""');
+        fromSql = `documents d JOIN documents_fts f ON f.rowid = d.id`;
+        where.push(`documents_fts MATCH ?`);
+        params.push(`"${fts}"*`);
+      } catch {
+        fromSql = `documents d`;
+      }
+      if (!fromSql) fromSql = `documents d`;
+    } else {
+      fromSql = `documents d`;
+    }
+    const whereSql = where.length ? "WHERE " + where.join(" AND ") : "";
+    const order =
+      sort === "created" ? "d.created_at DESC" : sort === "title" ? "d.title ASC" : "d.updated_at DESC";
+    // Pinned documents first, then the requested sort.
+    const orderSql = `d.is_pinned DESC, ${order}`;
+
+    let total = 0;
+    try {
+      const trow = await db.prepare(`SELECT COUNT(*) c FROM ${fromSql} ${whereSql}`).bind(...params).first();
+      total = trow.c || 0;
+    } catch {
+      return err("search_failed", 400, "search_failed");
+    }
+    const rows = await db
+      .prepare(
+        `SELECT d.id, d.title, d.document_type, d.folder_id, d.status, d.is_pinned,
+                d.tags, d.version, d.word_count, d.created_at, d.updated_at
+         FROM ${fromSql} ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`
+      )
+      .bind(...params, perPage, (page - 1) * perPage)
+      .all();
+    return json({
+      success: true,
+      total,
+      page,
+      per_page: perPage,
+      documents: (rows.results || []).map(docRow),
+    });
+  }
+
+  /* POST /api/admin/documents — create */
+  if (seg.length === 3 && req.method === "POST") {
+    let body;
+    try {
+      body = await readJson(req);
+    } catch {
+      return err("invalid_json", 400, "invalid_json");
+    }
+    const title = String(body.title || "Untitled").slice(0, 300) || "Untitled";
+    const document_type = DOC_TYPES.has(body.document_type) ? body.document_type : "note";
+    const folder_id = body.folder_id != null && /^\d+$/.test(String(body.folder_id)) ? parseInt(body.folder_id, 10) : null;
+    if (folder_id) {
+      const f = await db.prepare("SELECT id FROM folders WHERE id = ?").bind(folder_id).first();
+      if (!f) return err("folder_not_found", 404, "folder_not_found");
+    }
+    const content = String(body.markdown_content || "").slice(0, 2000000);
+    const res = await db
+      .prepare(
+        `INSERT INTO documents (title, document_type, markdown_content, folder_id, tags, word_count)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .bind(title, document_type, content, folder_id, cleanTags(body.tags), countWords(content))
+      .run();
+    const id = res.meta.last_row_id;
+    await audit(db, "document_create", `id=${id} title=${title.slice(0, 80)}`);
+    const row = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
+    return json({ success: true, document: { ...docRow(row), markdown_content: row.markdown_content } }, 201);
+  }
+
+  const id = parseInt(seg[3], 10);
+  if (!Number.isInteger(id) || id <= 0) return err("not_found", 404, "not_found");
+
+  /* GET /api/admin/documents/:id */
+  if (seg.length === 4 && req.method === "GET") {
+    const row = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
+    if (!row) return err("not_found", 404, "not_found");
+    return json({ success: true, document: { ...docRow(row), markdown_content: row.markdown_content } });
+  }
+
+  /* PUT /api/admin/documents/:id — optimistic concurrency via version */
+  if (seg.length === 4 && req.method === "PUT") {
+    let body;
+    try {
+      body = await readJson(req);
+    } catch {
+      return err("invalid_json", 400, "invalid_json");
+    }
+    const clientVersion = parseInt(body.version, 10);
+    if (!Number.isInteger(clientVersion)) return err("version_required", 400, "version_required");
+    const cur = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
+    if (!cur) return err("not_found", 404, "not_found");
+    if (cur.version !== clientVersion) {
+      return json(
+        { success: false, error: "version_conflict", code: "version_conflict", current_version: cur.version },
+        409
+      );
+    }
+    const now = utcNow();
+    const title = body.title !== undefined ? String(body.title).slice(0, 300) || "Untitled" : cur.title;
+    const content = body.markdown_content !== undefined ? String(body.markdown_content).slice(0, 2000000) : cur.markdown_content;
+    const folder_id =
+      body.folder_id === null || body.folder_id === undefined
+        ? cur.folder_id
+        : /^\d+$/.test(String(body.folder_id))
+          ? parseInt(body.folder_id, 10)
+          : cur.folder_id;
+    if (body.folder_id !== undefined && body.folder_id !== null && folder_id !== cur.folder_id) {
+      const f = await db.prepare("SELECT id FROM folders WHERE id = ?").bind(folder_id).first();
+      if (!f) return err("folder_not_found", 404, "folder_not_found");
+    }
+    const status = body.status !== undefined && DOC_STATUSES.has(body.status) ? body.status : cur.status;
+    const is_pinned = body.is_pinned !== undefined ? (body.is_pinned ? 1 : 0) : cur.is_pinned;
+    const tags = body.tags !== undefined ? cleanTags(body.tags) : cur.tags;
+    const newVersion = cur.version + 1;
+    await db
+      .prepare(
+        `UPDATE documents SET title=?, markdown_content=?, folder_id=?, status=?,
+         is_pinned=?, tags=?, version=?, word_count=?, updated_at=? WHERE id=?`
+      )
+      .bind(title, content, folder_id, status, is_pinned, tags, newVersion, countWords(content), now, id)
+      .run();
+    const updated = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
+    await maybeCreateRevision(db, updated, body.manual ? "manual" : "auto");
+    await audit(db, "document_update", `id=${id} v${newVersion}`);
+    return json({ success: true, version: newVersion, updated_at: now });
+  }
+
+  /* DELETE /api/admin/documents/:id — soft delete by default, ?permanent=1 for hard */
+  if (seg.length === 4 && req.method === "DELETE") {
+    const permanent = url.searchParams.get("permanent") === "1";
+    if (permanent) {
+      await db.batch([
+        db.prepare("DELETE FROM revisions WHERE document_id = ?").bind(id),
+        db.prepare("DELETE FROM documents WHERE id = ?").bind(id),
+      ]);
+      await audit(db, "document_hard_delete", `id=${id}`);
+    } else {
+      const now = utcNow();
+      await db.prepare("UPDATE documents SET status='trashed', updated_at=? WHERE id=?").bind(now, id).run();
+      await audit(db, "document_trash", `id=${id}`);
+    }
+    return json({ success: true });
+  }
+
+  /* POST /api/admin/documents/:id/duplicate */
+  if (seg.length === 5 && seg[4] === "duplicate" && req.method === "POST") {
+    const cur = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
+    if (!cur) return err("not_found", 404, "not_found");
+    const res = await db
+      .prepare(
+        `INSERT INTO documents (title, document_type, markdown_content, folder_id, tags, word_count)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .bind(`${cur.title} (copy)`.slice(0, 300), cur.document_type, cur.markdown_content, cur.folder_id, cur.tags, cur.word_count)
+      .run();
+    await audit(db, "document_duplicate", `from=${id} to=${res.meta.last_row_id}`);
+    return json({ success: true, id: res.meta.last_row_id }, 201);
+  }
+
+  /* POST /api/admin/documents/:id/archive | /restore */
+  if (seg.length === 5 && (seg[4] === "archive" || seg[4] === "restore") && req.method === "POST") {
+    const to = seg[4] === "archive" ? "archived" : "active";
+    const now = utcNow();
+    const r = await db.prepare("UPDATE documents SET status=?, updated_at=? WHERE id=?").bind(to, now, id).run();
+    if (!r.meta.changes) return err("not_found", 404, "not_found");
+    await audit(db, `document_${seg[4]}`, `id=${id}`);
+    return json({ success: true, status: to });
+  }
+
+  /* GET /api/admin/documents/:id/revisions */
+  if (seg.length === 5 && seg[4] === "revisions" && req.method === "GET") {
+    const rows = await db
+      .prepare(
+        `SELECT id, title, version, reason, created_at,
+                substr(markdown_content, 1, 300) AS preview
+         FROM revisions WHERE document_id = ? ORDER BY id DESC LIMIT 50`
+      )
+      .bind(id)
+      .all();
+    return json({ success: true, revisions: rows.results || [] });
+  }
+
+  /* GET /api/admin/documents/:id/revisions/:revId — full revision content */
+  if (seg.length === 6 && seg[4] === "revisions" && req.method === "GET") {
+    const revId = parseInt(seg[5], 10);
+    const rev = await db
+      .prepare("SELECT * FROM revisions WHERE id = ? AND document_id = ?")
+      .bind(revId, id)
+      .first();
+    if (!rev) return err("not_found", 404, "not_found");
+    return json({
+      success: true,
+      revision: {
+        id: rev.id,
+        title: rev.title,
+        markdown_content: rev.markdown_content,
+        version: rev.version,
+        reason: rev.reason,
+        created_at: rev.created_at,
+      },
+    });
+  }
+
+  /* POST /api/admin/documents/:id/revisions/:revId/restore */
+  if (seg.length === 7 && seg[4] === "revisions" && seg[6] === "restore" && req.method === "POST") {
+    const revId = parseInt(seg[5], 10);
+    const rev = await db
+      .prepare("SELECT * FROM revisions WHERE id = ? AND document_id = ?")
+      .bind(revId, id)
+      .first();
+    if (!rev) return err("not_found", 404, "not_found");
+    const cur = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
+    if (!cur) return err("not_found", 404, "not_found");
+    // Snapshot current content first so the restore itself is reversible.
+    await maybeCreateRevision(db, cur, "manual");
+    const now = utcNow();
+    const newVersion = cur.version + 1;
+    await db
+      .prepare("UPDATE documents SET title=?, markdown_content=?, version=?, word_count=?, updated_at=? WHERE id=?")
+      .bind(rev.title, rev.markdown_content, newVersion, countWords(rev.markdown_content), now, id)
+      .run();
+    const updated = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
+    await maybeCreateRevision(db, updated, "manual");
+    await audit(db, "document_revision_restore", `id=${id} rev=${revId} v${newVersion}`);
+    return json({ success: true, version: newVersion });
+  }
+
+  return err("not_found", 404, "not_found");
+}
+
+async function handleFolders(req, env, seg) {
+  const db = env.DB;
+  if (seg.length === 3 && req.method === "GET") {
+    const rows = await db
+      .prepare(
+        `SELECT f.id, f.name, f.parent_id, f.created_at,
+                (SELECT COUNT(*) FROM documents d WHERE d.folder_id = f.id AND d.status != 'trashed') AS doc_count
+         FROM folders f ORDER BY f.name`
+      )
+      .all();
+    return json({ success: true, folders: rows.results || [] });
+  }
+  if (seg.length === 3 && req.method === "POST") {
+    let body;
+    try {
+      body = await readJson(req);
+    } catch {
+      return err("invalid_json", 400, "invalid_json");
+    }
+    const name = String(body.name || "").trim().slice(0, 120);
+    if (!name) return err("name_required", 400, "validation");
+    const parent_id = body.parent_id != null && /^\d+$/.test(String(body.parent_id)) ? parseInt(body.parent_id, 10) : null;
+    const res = await db.prepare("INSERT INTO folders (name, parent_id) VALUES (?, ?)").bind(name, parent_id).run();
+    await audit(db, "folder_create", `id=${res.meta.last_row_id} name=${name}`);
+    return json({ success: true, id: res.meta.last_row_id }, 201);
+  }
+  const id = parseInt(seg[3], 10);
+  if (!Number.isInteger(id) || id <= 0) return err("not_found", 404, "not_found");
+  if (seg.length === 4 && req.method === "PUT") {
+    let body;
+    try {
+      body = await readJson(req);
+    } catch {
+      return err("invalid_json", 400, "invalid_json");
+    }
+    const name = String(body.name || "").trim().slice(0, 120);
+    if (!name) return err("name_required", 400, "validation");
+    const r = await db.prepare("UPDATE folders SET name=?, updated_at=? WHERE id=?").bind(name, utcNow(), id).run();
+    if (!r.meta.changes) return err("not_found", 404, "not_found");
+    return json({ success: true });
+  }
+  if (seg.length === 4 && req.method === "DELETE") {
+    await db.batch([
+      db.prepare("UPDATE documents SET folder_id = NULL WHERE folder_id = ?").bind(id),
+      db.prepare("DELETE FROM folders WHERE id = ?").bind(id),
+    ]);
+    await audit(db, "folder_delete", `id=${id}`);
+    return json({ success: true });
+  }
+  return err("not_found", 404, "not_found");
+}
+
+/* ---------------- writing studio: asset upload ---------------- */
+
+function detectImageType(bytes) {
+  outer: for (const [mime, info] of Object.entries(IMAGE_TYPES)) {
+    for (const { offset, bytes: sig } of info.sigs) {
+      for (let i = 0; i < sig.length; i++) {
+        if (bytes[offset + i] !== sig[i]) continue outer;
+      }
+    }
+    return { mime, ext: info.ext };
+  }
+  return null;
+}
+
+function u8ToBase64(u8) {
+  let s = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < u8.length; i += CHUNK) {
+    s += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK));
+  }
+  return btoa(s);
+}
+
+function base64ToU8(b64) {
+  const s = atob(b64);
+  const u8 = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+  return u8;
+}
+
+async function handleUpload(req, env) {
+  const db = env.DB;
+  const ip = clientIp(req);
+  if (!(await checkRateLimit(db, `upload:${ip}`, 30, 3600))) {
+    return err("rate_limited", 429, "rate_limited");
+  }
+  let form;
+  try {
+    form = await req.formData();
+  } catch {
+    return err("invalid_form", 400, "invalid_form");
+  }
+  const files = [];
+  for (const v of form.getAll("file[]")) {
+    if (typeof v !== "string") files.push(v);
+  }
+  if (!files.length) return err("no_files", 400, "no_files");
+  if (files.length > 5) return err("too_many_files", 400, "too_many_files");
+
+  const base = req.url.split("/api/")[0];
+  const out = [];
+  for (const file of files) {
+    const size = file.size;
+    if (size <= 0 || size > MAX_UPLOAD_BYTES) {
+      return err("file_too_large", 413, "file_too_large");
+    }
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const detected = detectImageType(buf);
+    if (!detected) {
+      return err("invalid_image", 400, "invalid_image");
+    }
+    const key = `${randomTokenHex(16)}.${detected.ext}`;
+    // Stored as base64 TEXT: D1 BLOB bind/read round-trips are unreliable,
+    // while TEXT is deterministic. (+33% size; acceptable at this scale.)
+    await db
+      .prepare("INSERT INTO assets (key, content_type, size, data) VALUES (?, ?, ?, ?)")
+      .bind(key, detected.mime, size, u8ToBase64(buf))
+      .run();
+    out.push({ name: file.name, url: `${base}/api/assets/${key}`, key });
+  }
+  await audit(db, "asset_upload", `count=${out.length}`);
+  return json({ success: true, files: out });
+}
+
+async function handleAsset(req, env, key) {
+  if (!/^[0-9a-f]{32}\.(png|jpg|webp|gif)$/.test(key)) {
+    return new Response("not found", { status: 404 });
+  }
+  const row = await env.DB.prepare("SELECT content_type, data, size FROM assets WHERE key = ?").bind(key).first();
+  if (!row || typeof row.data !== "string") return new Response("not found", { status: 404 });
+  return new Response(base64ToU8(row.data), {
+    headers: {
+      "content-type": row.content_type,
+      "cache-control": "public, max-age=31536000, immutable",
+    },
+  });
+}
+
 /* ---------------- router ---------------- */
 
 export default {
@@ -529,6 +1020,9 @@ export default {
       if (path === "/api/subscribe" && req.method === "POST") return cors(await handleSubscribe(req, env));
       if (path === "/api/confirm" && req.method === "GET") return await handleConfirm(req, env);
       if (path === "/api/unsubscribe" && req.method === "GET") return await handleUnsubscribe(req, env);
+      if (path.startsWith("/api/assets/") && req.method === "GET") {
+        return await handleAsset(req, env, path.slice("/api/assets/".length));
+      }
 
       /* admin */
       if (path.startsWith("/api/admin/")) {
@@ -720,6 +1214,17 @@ async function handleAdmin(req, env, path, url) {
       }
     }
     return err("not_found", 404, "not_found");
+  }
+
+  /* writing studio */
+  if (seg[2] === "documents") {
+    return await handleDocuments(req, env, seg, url);
+  }
+  if (seg[2] === "folders") {
+    return await handleFolders(req, env, seg);
+  }
+  if (seg[2] === "upload" && seg.length === 3 && req.method === "POST") {
+    return await handleUpload(req, env);
   }
 
   return err("not_found", 404, "not_found");

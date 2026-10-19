@@ -53,13 +53,38 @@ Admin (header `Authorization: Bearer <ADMIN_TOKEN>`):
 | POST   | /api/admin/campaigns/:id/test               | Test send (409 until a mail provider exists) |
 | POST   | /api/admin/campaigns/:id/send               | Bulk send (409 until a mail provider exists) |
 | GET    | /api/admin/health                           | Provider status, table counts            |
+| GET    | /api/admin/documents                        | List/search documents (status,q,folder_id,type,tag,sort,page,per_page) |
+| POST   | /api/admin/documents                        | Create document                          |
+| GET    | /api/admin/documents/:id                    | Full document with Markdown source       |
+| PUT    | /api/admin/documents/:id                    | Update (requires `version`; 409 on conflict) |
+| DELETE | /api/admin/documents/:id                    | Soft-delete to trash (`?permanent=1` for hard delete) |
+| POST   | /api/admin/documents/:id/duplicate          | Duplicate document                       |
+| POST   | /api/admin/documents/:id/archive            | Archive                                  |
+| POST   | /api/admin/documents/:id/restore            | Restore from trash/archive               |
+| GET    | /api/admin/documents/:id/revisions          | Revision history                         |
+| GET    | /api/admin/documents/:id/revisions/:revId   | Full revision content                    |
+| POST   | /api/admin/documents/:id/revisions/:revId/restore | Restore revision (reversible)     |
+| GET    | /api/admin/folders                          | List folders with document counts        |
+| POST   | /api/admin/folders                          | Create folder                            |
+| PUT    | /api/admin/folders/:id                      | Rename folder                            |
+| DELETE | /api/admin/folders/:id                      | Delete folder (documents become unfiled) |
+| POST   | /api/admin/upload                           | Image upload (multipart `file[]`, ≤2MB, magic-byte validated) |
+
+Public:
+
+| Method | Path              | Description                                            |
+| ------ | ----------------- | ------------------------------------------------------ |
+| GET    | /api/assets/:key  | Serve an uploaded image (unguessable key, immutable cache) |
 
 ## D1 schema
 
 Migrations live in `migrations/` and are applied in order. Current: `0001_init.sql`.
 
 Tables: `subscribers`, `email_tokens` (sha256 hashes only, 48h expiry),
-`campaigns`, `analytics_events` (no IPs, no PII), `audit_log`, `rate_limits`.
+`campaigns`, `analytics_events` (no IPs, no PII), `audit_log`, `rate_limits`,
+`folders`, `documents` (+ `documents_fts` FTS5 index with sync triggers),
+`revisions` (max 50 per document), `assets` (uploaded images as base64 TEXT;
+R2 is not enabled on this account — migrate `assets` to R2 when available).
 
 Apply a migration:
 
@@ -160,10 +185,12 @@ admin actions are written to `audit_log`.
 
 ```bash
 cd worker
-ADMIN_TOKEN=<token> node --test test.mjs
+ADMIN_TOKEN=<token> node --test test.mjs            # newsletter/analytics/admin
+ADMIN_TOKEN=<token> node --test test-studio.mjs     # writing studio
 ```
 
-End-to-end tests against the deployed Worker: analytics ingestion and
-deduplication, subscribe/confirm/unsubscribe flows, resubscribe protection,
-admin auth, CSV export auth, campaign draft + provider-not-configured
-behavior. Test data uses `/__test__/` paths and is cleaned up afterwards.
+End-to-end tests against the deployed Worker. The studio suite covers
+document CRUD, FTS search (including Persian), optimistic-concurrency
+conflicts, revision creation/restoration, image upload validation
+(magic bytes, size limits, spoofed types), asset serving, and auth on
+every protected route. Test data is cleaned up afterwards.

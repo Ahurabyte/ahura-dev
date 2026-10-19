@@ -4,13 +4,15 @@ import { withBase } from "../../lib/posts";
 
 interface Props {
   title: string;
-  page: "dashboard" | "analytics" | "subscribers" | "campaigns" | "settings";
+  page: "dashboard" | "analytics" | "subscribers" | "campaigns" | "settings" | "writing";
+  fluid?: boolean;
 }
 
-const { title, page } = Astro.props;
+const { title, page, fluid = false } = Astro.props;
 
 const nav = [
   { id: "dashboard", label: "داشبورد", href: withBase("/admin/") },
+  { id: "writing", label: "استودیو نوشتن", href: withBase("/admin/writing/") },
   { id: "analytics", label: "آمار بازدید", href: withBase("/admin/analytics/") },
   { id: "subscribers", label: "مشترکین", href: withBase("/admin/subscribers/") },
   { id: "campaigns", label: "کمپین‌ها", href: withBase("/admin/campaigns/") },
@@ -82,6 +84,7 @@ const nav = [
       .adm-nav a { padding: 8px 14px; border-radius: 8px; text-decoration: none; color: var(--adm-muted); font-size: 0.92rem; white-space: nowrap; }
       .adm-nav a.active { background: var(--adm-accent); color: var(--adm-bg); }
       .adm-main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+      .adm-main.fluid { max-width: none; padding: 0; }
       .adm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
       .adm-card { background: var(--adm-panel); border: 1px solid var(--adm-border); border-radius: 12px; padding: 18px; }
       .adm-card h3 { margin: 0 0 4px; font-size: 0.85rem; color: var(--adm-muted); font-weight: 500; }
@@ -145,7 +148,7 @@ const nav = [
           <a href={n.href} class={n.id === page ? "active" : ""}>{n.label}</a>
         ))}
       </nav>
-      <main class="adm-main">
+      <main class:list={["adm-main", { fluid }]}>
         <slot />
       </main>
     </div>
