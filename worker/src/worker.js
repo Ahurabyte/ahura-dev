@@ -74,10 +74,22 @@ function clientIp(req) {
 }
 
 function allowedOrigins(env) {
-  return String(env.SITE_ORIGIN || "")
+  // Note: vars set via the API multipart upload are silently dropped by
+  // Cloudflare (verified 2026-10-20), so keep a hardcoded fallback.
+  const fromEnv = String(env.SITE_ORIGIN || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+  if (fromEnv.length > 0) return fromEnv;
+  return ["https://adsrdsr2.github.io"];
+}
+
+function siteUrl(env) {
+  return env.SITE_URL || "https://adsrdsr2.github.io/ahura-dev";
+}
+
+function emailProvider(env) {
+  return env.EMAIL_PROVIDER || "none";
 }
 
 function corsHeaders(req, env) {
@@ -194,7 +206,7 @@ const mailProviders = {
 };
 
 function mailProvider(env) {
-  const name = String(env.EMAIL_PROVIDER || "none").toLowerCase();
+  const name = String(emailProvider(env)).toLowerCase();
   return mailProviders[name] || mailProviders.none;
 }
 
@@ -325,7 +337,6 @@ async function handleSubscribe(req, env) {
   let emailSent = false;
   let emailError = null;
   if (provider.canSend) {
-    const siteUrl = String(env.SITE_URL || "").replace(/\/$/, "");
     const confirmUrl = `${req.url.split("/api/")[0]}/api/confirm?token=${token}`;
     try {
       await provider.send({
@@ -383,9 +394,9 @@ async function handleConfirm(req, env) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token") || "";
   const row = await findValidToken(db, token, "confirm");
-  const siteUrl = env.SITE_URL || "/";
+  const home = siteUrl(env);
   if (!row) {
-    return resultPage("Invalid or expired link", "This confirmation link is invalid or has expired. Please subscribe again.", siteUrl);
+    return resultPage("Invalid or expired link", "This confirmation link is invalid or has expired. Please subscribe again.", home);
   }
   const now = utcNow();
   await db.batch([
@@ -393,19 +404,19 @@ async function handleConfirm(req, env) {
     db.prepare("UPDATE email_tokens SET used_at = ? WHERE id = ?").bind(now, row.id),
   ]);
   await audit(db, "confirm", row.email);
-  return resultPage("Subscription confirmed", "Your newsletter subscription is now active. Welcome aboard!", siteUrl);
+  return resultPage("Subscription confirmed", "Your newsletter subscription is now active. Welcome aboard!", home);
 }
 
 async function handleUnsubscribe(req, env) {
   const db = env.DB;
   const url = new URL(req.url);
   const token = url.searchParams.get("token") || "";
-  const siteUrl = env.SITE_URL || "/";
+  const home = siteUrl(env);
   // Unsubscribe links carry purpose=unsubscribe tokens; also accept confirm tokens for convenience.
   let row = await findValidToken(db, token, "unsubscribe");
   if (!row) row = await findValidToken(db, token, "confirm");
   if (!row) {
-    return resultPage("Invalid or expired link", "This unsubscribe link is invalid or has expired.", siteUrl);
+    return resultPage("Invalid or expired link", "This unsubscribe link is invalid or has expired.", home);
   }
   const now = utcNow();
   await db.batch([
@@ -413,7 +424,7 @@ async function handleUnsubscribe(req, env) {
     db.prepare("UPDATE email_tokens SET used_at = ? WHERE id = ?").bind(now, row.id),
   ]);
   await audit(db, "unsubscribe", row.email);
-  return resultPage("Unsubscribed", "You have been unsubscribed. You will not receive further newsletters.", siteUrl);
+  return resultPage("Unsubscribed", "You have been unsubscribed. You will not receive further newsletters.", home);
 }
 
 /* ---------------- admin: analytics queries ---------------- */
