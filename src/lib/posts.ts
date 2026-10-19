@@ -17,15 +17,16 @@ export const withBase = (p: string) =>
 export const FALLBACK_IMAGE = 'images/card-about.webp';
 
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 /** Cover image for a post: the `card-<slug>.webp` convention (checked on
- *  disk at build time), then the generic fallback. */
+ *  disk at build time; `process.cwd()` is the project root during
+ *  `astro build`), then the generic fallback. */
 function imageFor(slug: string): string {
   const candidates = [`images/card-${slug}.webp`, FALLBACK_IMAGE];
   for (const rel of candidates) {
     try {
-      if (existsSync(new URL(`../../public/${rel}`, import.meta.url)))
-        return withBase(rel);
+      if (existsSync(join(process.cwd(), 'public', rel))) return withBase(rel);
     } catch {
       /* fall through to the next candidate */
     }
