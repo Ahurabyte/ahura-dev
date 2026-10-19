@@ -33,7 +33,7 @@ const {
       (function () {
         try {
           const saved = localStorage.getItem('ahura-theme');
-          if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          if (saved !== 'light') {
             document.documentElement.classList.add('dark');
           }
         } catch (e) {}
