@@ -1,0 +1,77 @@
+---
+import '../styles/global.css';
+import ThemeToggle from '../components/ThemeToggle';
+import Sidebar from '../components/Sidebar.astro';import { withBase } from '../lib/posts';
+
+
+interface Props {
+  title: string;
+  description?: string;
+  withSidebar?: boolean;
+  current?: 'home' | 'about';
+}
+
+const {
+  title,
+  description = 'وبلاگ شخصی اهورا — یادداشت‌ها، تجربه‌ها و چیزهایی که یاد می‌گیرم.',
+  withSidebar = true,
+  current,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <script is:inline>
+      // جلوگیری از چشمک‌زدن تم: قبل از رندر، تم ذخیره‌شده را اعمال کن
+      (function () {
+        try {
+          const saved = localStorage.getItem('ahura-theme');
+          if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="slj-wrap">
+      <div class="slj-cols">
+        <div class="slj-maincol">
+          <div class="slj-util">
+            <nav aria-label="ناوبری اصلی">
+              <a href={withBase("/")} aria-current={current === 'home' ? 'page' : undefined}>خانه</a>
+              <a href={withBase("/about")} aria-current={current === 'about' ? 'page' : undefined}>درباره من</a>
+            </nav>
+            <ThemeToggle client:load />
+          </div>
+
+          {current === 'home' ? (
+            <h1 class="slj-wordmark">
+              <a href={withBase("/")}>Ahura.dev</a>
+            </h1>
+          ) : (
+            <p class="slj-wordmark">
+              <a href={withBase("/")}>Ahura.dev</a>
+            </p>
+          )}
+          <hr class="slj-rule" />
+
+          <main class="slj-main">
+            <slot />
+          </main>
+          <footer class="slj-footer">
+            ساخته‌شده با Astro — © ۲۰۲۶ اهورا · <a href={withBase("/about")}>درباره من</a>
+          </footer>
+        </div>
+        {withSidebar && <Sidebar />}
+      </div>
+    </div>
+  </body>
+</html>

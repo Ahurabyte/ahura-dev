@@ -1,0 +1,59 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { faDate, getPosts, withBase, FALLBACK_IMAGE } from '../../lib/posts';
+
+interface PostModule {
+  frontmatter: { title: string; description: string; pubDate: string };
+  default: (props: Record<string, unknown>) => unknown;
+}
+
+export async function getStaticPaths() {
+  const modules = import.meta.glob<PostModule>('../../content/posts/*.mdx', { eager: true });
+  return Object.entries(modules).map(([path, mod]) => ({
+    params: { slug: path.split('/').pop()!.replace(/\.mdx$/, '') },
+    props: { frontmatter: mod.frontmatter, Content: mod.default },
+  }));
+}
+
+const { frontmatter, Content } = Astro.props;
+const { slug } = Astro.params;
+
+const posts = getPosts();
+const idx = posts.findIndex((p) => p.slug === slug);
+const prev = idx > 0 ? posts[idx - 1] : null;
+const next = idx >= 0 && idx < posts.length - 1 ? posts[idx + 1] : null;
+const image = posts[idx]?.image ?? withBase(FALLBACK_IMAGE);
+---
+
+<BaseLayout title={`${frontmatter.title} — اهورا.dev`} description={frontmatter.description}>
+  <article class="slj-article-head">
+    <a href={withBase("/")} class="slj-back">→ برگرد به خانه</a>
+    <div>
+      <time>{faDate(frontmatter.pubDate)}</time>
+      <h1>{frontmatter.title}</h1>
+      <p class="lede">{frontmatter.description}</p>
+    </div>
+    <div class="ph">
+      <img src={image} alt="" />
+    </div>
+    <div class="slj-prose">
+      <Content />
+    </div>
+    <nav class="slj-pager" aria-label="نوشته‌های قبلی و بعدی">
+      <div>
+        {prev ? (
+          <a href={withBase(`/posts/${prev.slug}/`)}><span>نوشته‌ی جدیدتر</span>{prev.title}</a>
+        ) : (
+          <span></span>
+        )}
+      </div>
+      <div style="text-align: end">
+        {next ? (
+          <a href={withBase(`/posts/${next.slug}/`)}><span>نوشته‌ی قدیمی‌تر</span>{next.title}</a>
+        ) : (
+          <span></span>
+        )}
+      </div>
+    </nav>
+  </article>
+</BaseLayout>

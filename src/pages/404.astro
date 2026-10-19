@@ -1,0 +1,13 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';import { withBase } from '../lib/posts';
+
+---
+
+<BaseLayout title="پیدا نشد — اهورا.dev" withSidebar={false}>
+  <div class="slj-404">
+    <div class="code">404</div>
+    <h1>این صفحه پیدا نشد</h1>
+    <p>به‌نظر می‌رسه راه رو اشتباه اومدی؛ ولی اشکالی نداره، برگردیم سر جای اول.</p>
+    <a href={withBase("/")}>→ برگرد به خانه</a>
+  </div>
+</BaseLayout>

@@ -1,0 +1,71 @@
+---
+import { CATEGORIES, faDate, getPosts, withBase } from '../lib/posts';
+
+
+const posts = getPosts().slice(0, 4);
+---
+
+<aside class="slj-aside">
+  <section>
+    <h3>دسته‌بندی‌ها</h3>
+    <ul class="slj-cat-list">
+      {CATEGORIES.map((c) => (
+        <li>{c}</li>
+      ))}
+    </ul>
+  </section>
+
+  <hr class="slj-rule" />
+
+  <section>
+    <h3>آخرین نوشته‌ها</h3>
+    <ul class="slj-latest">
+      {posts.map((p) => (
+        <li>
+          <img src={p.image} alt="" loading="lazy" />
+          <div>
+            <a href={withBase(`/posts/${p.slug}/`)}>{p.title}</a>
+            <time>{faDate(p.pubDate)}</time>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <hr class="slj-rule" />
+
+  <section class="slj-news">
+    <h3>خبرنامه</h3>
+    <p>
+      هر وقت چیز تازه‌ای بنویسم، اول تو باخبر شو. بدون اسپم، فقط حرف‌های خودمونی.
+    </p>
+    <form id="slj-news-form">
+      <input type="email" name="email" placeholder="ایمیلت" required aria-label="ایمیل" />
+      <button type="submit">عضویت</button>
+    </form>
+  </section>
+</aside>
+
+<script is:inline>
+  (function () {
+    var form = document.getElementById('slj-news-form');
+    if (!form) return;
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var input = form.querySelector('input');
+      var email = input && input.value ? input.value.trim() : '';
+      if (!email) return;
+      try {
+        localStorage.setItem('slj-newsletter', email);
+      } catch (err) {}
+      form.innerHTML =
+        '<p class="ok">عضو شدی! 🌱 به‌زودی خبرهای تازه می‌رسه.</p>';
+    });
+    try {
+      if (localStorage.getItem('slj-newsletter')) {
+        form.innerHTML =
+          '<p class="ok">قبلاً عضو شدی 🌱 منتظر نوشته‌های تازه باش.</p>';
+      }
+    } catch (err) {}
+  })();
+</script>
