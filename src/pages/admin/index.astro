@@ -1,0 +1,65 @@
+---
+import AdminShell from "../../components/admin/AdminShell.astro";
+---
+
+<AdminShell title="داشبورد" page="dashboard">
+  <div id="adm-dash">
+    <div class="adm-loading">در حال بارگذاری...</div>
+  </div>
+
+  <script is:inline>
+    (function () {
+      function faStatus(s) {
+        return { confirmed: "تأیید شده", pending_confirmation: "در انتظار تأیید", unsubscribed: "لغو شده", bounced: "برگشتی" }[s] || s;
+      }
+      function fmtDate(iso) {
+        if (!iso) return "—";
+        try { return new Date(iso).toLocaleDateString("fa-IR"); } catch (e) { return iso; }
+      }
+      window.AdminAPI.ready.then(function () {
+        var A = window.AdminAPI;
+        var root = document.getElementById("adm-dash");
+        Promise.all([A.api("/api/admin/stats"), A.api("/api/admin/analytics?days=30"), A.api("/api/admin/subscribers?per_page=5")])
+          .then(function (res) {
+            var s = res[0].stats, an = res[1].analytics, subs = res[2];
+            var h = '<div class="adm-grid">'
+              + card("بازدید امروز", s.views_today)
+              + card("بازدید ۷ روز", s.views_7d)
+              + card("بازدید ۳۰ روز", s.views_30d)
+              + card("نشست‌های ۳۰ روز", s.sessions_30d, "شناسه‌ی ناشناس، نه انسان تأییدشده")
+              + card("مشترکین تأییدشده", s.subscribers_confirmed)
+              + card("در انتظار تأیید", s.subscribers_pending)
+              + card("لغو عضویت", s.subscribers_unsubscribed)
+              + "</div>";
+            h += '<div class="adm-section"><h2>ترافیک روزانه (۳۰ روز)</h2><div class="adm-card" id="adm-chart"></div></div>';
+            h += '<div class="adm-section"><h2>پربازدیدترین صفحات</h2><div class="adm-card adm-table-wrap">' + pagesTable(an.top_pages) + "</div></div>";
+            h += '<div class="adm-section"><h2>آخرین مشترکین</h2><div class="adm-card adm-table-wrap">' + subsTable(subs.subscribers) + "</div></div>";
+            root.innerHTML = h;
+            A.barChart(document.getElementById("adm-chart"), an.daily, "d", "views");
+          })
+          .catch(function (e) {
+            if (e.message !== "unauthorized") root.innerHTML = '<div class="adm-error">خطا در بارگذاری: ' + A.esc(e.message) + "</div>";
+          });
+        function card(label, num, sub) {
+          return '<div class="adm-card"><h3>' + label + '</h3><div class="num">' + num + "</div>" + (sub ? '<div class="sub">' + sub + "</div>" : "") + "</div>";
+        }
+        function pagesTable(rows) {
+          if (!rows.length) return '<div class="adm-empty">هنوز بازدیدی ثبت نشده.</div>';
+          var t = '<table class="adm-table"><tr><th>صفحه</th><th>بازدید</th><th>نشست</th></tr>';
+          rows.slice(0, 8).forEach(function (r) {
+            t += "<tr><td dir='ltr' style='text-align:left'>" + A.esc(r.path) + "</td><td>" + r.views + "</td><td>" + r.sessions + "</td></tr>";
+          });
+          return t + "</table>";
+        }
+        function subsTable(rows) {
+          if (!rows.length) return '<div class="adm-empty">هنوز مشترکی ثبت نشده.</div>';
+          var t = '<table class="adm-table"><tr><th>ایمیل</th><th>وضعیت</th><th>تاریخ</th></tr>';
+          rows.forEach(function (r) {
+            t += "<tr><td dir='ltr' style='text-align:left'>" + A.esc(r.email) + '</td><td><span class="adm-badge ' + r.status + '">' + faStatus(r.status) + "</span></td><td>" + fmtDate(r.created_at) + "</td></tr>";
+          });
+          return t + "</table>";
+        }
+      });
+    })();
+  </script>
+</AdminShell>

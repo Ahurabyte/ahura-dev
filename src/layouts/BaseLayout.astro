@@ -73,5 +73,52 @@ const {
         {withSidebar && <Sidebar />}
       </div>
     </div>
+    <script is:inline>
+      // Privacy-conscious first-party analytics: one page-view event per page load.
+      // No IP storage, no fingerprinting, honors Do Not Track.
+      (function () {
+        try {
+          if (navigator.doNotTrack === "1" || window.doNotTrack === "1") return;
+          var sid = null;
+          try {
+            sid = localStorage.getItem("ahura-sid");
+            if (!sid) {
+              sid =
+                (crypto.randomUUID && crypto.randomUUID()) ||
+                "xxxxxxxx-xxxx-4xxx".replace(/x/g, function () {
+                  return ((Math.random() * 16) | 0).toString(16);
+                });
+              localStorage.setItem("ahura-sid", sid);
+            }
+          } catch (e) {
+            return;
+          }
+          var eventId =
+            (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+          var w = Math.min(window.screen.width, window.innerWidth || 0);
+          var ua = navigator.userAgent || "";
+          var device = /Mobi|Android|iPhone|iPad|Mobile/i.test(ua) ? (w > 900 ? "tablet" : "mobile") : w > 0 && w < 768 ? "mobile" : "desktop";
+          var params = new URLSearchParams(window.location.search);
+          var payload = {
+            event_id: eventId,
+            session_id: sid,
+            path: window.location.pathname,
+            referrer: document.referrer || null,
+            utm_source: params.get("utm_source"),
+            utm_medium: params.get("utm_medium"),
+            utm_campaign: params.get("utm_campaign"),
+            device: device,
+          };
+          var body = JSON.stringify(payload);
+          var url = "https://ahura-api.admine-070.workers.dev/api/analytics";
+          if (navigator.sendBeacon) {
+            var blob = new Blob([body], { type: "application/json" });
+            navigator.sendBeacon(url, blob);
+          } else {
+            fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: body, keepalive: true }).catch(function () {});
+          }
+        } catch (e) {}
+      })();
+    </script>
   </body>
 </html>

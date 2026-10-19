@@ -1,0 +1,266 @@
+---
+/* Shared admin layout: auth gate, nav, API client, toast, chart helper. */
+import { withBase } from "../../lib/posts";
+
+interface Props {
+  title: string;
+  page: "dashboard" | "analytics" | "subscribers" | "campaigns" | "settings";
+}
+
+const { title, page } = Astro.props;
+
+const nav = [
+  { id: "dashboard", label: "داشبورد", href: withBase("/admin/") },
+  { id: "analytics", label: "آمار بازدید", href: withBase("/admin/analytics/") },
+  { id: "subscribers", label: "مشترکین", href: withBase("/admin/subscribers/") },
+  { id: "campaigns", label: "کمپین‌ها", href: withBase("/admin/campaigns/") },
+  { id: "settings", label: "تنظیمات", href: withBase("/admin/settings/") },
+];
+---
+
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} — مدیریت وبلاگ اهورا</title>
+    <style>
+      :root {
+        --adm-bg: #f7efe4;
+        --adm-panel: #fffdf8;
+        --adm-border: #e0d9c8;
+        --adm-text: #2e2b22;
+        --adm-muted: #6b6558;
+        --adm-accent: #5f5b52;
+        --adm-err: #a33b2e;
+        --adm-ok: #3d7a44;
+      }
+      .dark {
+        --adm-bg: #1c1a15;
+        --adm-panel: #26231c;
+        --adm-border: #3a352a;
+        --adm-text: #ece5d3;
+        --adm-muted: #a89e86;
+        --adm-accent: #c9bfa8;
+        --adm-err: #e08073;
+        --adm-ok: #7bc47f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--adm-bg);
+        color: var(--adm-text);
+        font-family: Vazirmatn, system-ui, sans-serif;
+        min-height: 100vh;
+      }
+      /* honor the visitor's saved theme choice */
+      .adm-login { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--adm-bg); z-index: 50; padding: 20px; }
+      .adm-login[hidden], .adm-app[hidden] { display: none; }
+      .adm-login-card { background: var(--adm-panel); border: 1px solid var(--adm-border); border-radius: 12px; padding: 36px; width: 100%; max-width: 400px; }
+      .adm-login-card h1 { font-family: "Playfair Display", serif; margin: 0 0 8px; font-size: 1.4rem; }
+      .adm-login-card p { color: var(--adm-muted); font-size: 0.9rem; margin: 0 0 20px; }
+      .adm-field { margin-bottom: 14px; }
+      .adm-field label { display: block; font-size: 0.85rem; margin-bottom: 6px; color: var(--adm-muted); }
+      .adm-input, .adm-select, .adm-textarea {
+        width: 100%; padding: 10px 12px; border: 1px solid var(--adm-border);
+        border-radius: 8px; background: var(--adm-bg); color: var(--adm-text);
+        font-family: inherit; font-size: 0.95rem;
+      }
+      .adm-textarea { min-height: 140px; resize: vertical; font-family: monospace; direction: ltr; text-align: left; }
+      .adm-btn {
+        display: inline-block; padding: 10px 22px; border: none; border-radius: 8px;
+        background: var(--adm-accent); color: var(--adm-bg); font-family: inherit;
+        font-size: 0.95rem; cursor: pointer;
+      }
+      .adm-btn:disabled { opacity: 0.5; cursor: default; }
+      .adm-btn-ghost { background: transparent; color: var(--adm-accent); border: 1px solid var(--adm-border); }
+      .adm-btn-danger { background: var(--adm-err); color: #fff; }
+      .adm-topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--adm-border); background: var(--adm-panel); position: sticky; top: 0; z-index: 10; }
+      .adm-brand { font-family: "Playfair Display", serif; font-weight: 700; font-size: 1.1rem; }
+      .adm-nav { display: flex; gap: 4px; padding: 12px 24px; border-bottom: 1px solid var(--adm-border); background: var(--adm-panel); overflow-x: auto; }
+      .adm-nav a { padding: 8px 14px; border-radius: 8px; text-decoration: none; color: var(--adm-muted); font-size: 0.92rem; white-space: nowrap; }
+      .adm-nav a.active { background: var(--adm-accent); color: var(--adm-bg); }
+      .adm-main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+      .adm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+      .adm-card { background: var(--adm-panel); border: 1px solid var(--adm-border); border-radius: 12px; padding: 18px; }
+      .adm-card h3 { margin: 0 0 4px; font-size: 0.85rem; color: var(--adm-muted); font-weight: 500; }
+      .adm-card .num { font-size: 1.9rem; font-weight: 800; }
+      .adm-card .sub { font-size: 0.8rem; color: var(--adm-muted); }
+      .adm-section { margin-bottom: 28px; }
+      .adm-section h2 { font-size: 1.15rem; margin: 0 0 14px; }
+      .adm-table-wrap { overflow-x: auto; }
+      table.adm-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+      table.adm-table th, table.adm-table td { text-align: right; padding: 10px 12px; border-bottom: 1px solid var(--adm-border); }
+      table.adm-table th { color: var(--adm-muted); font-weight: 500; font-size: 0.82rem; }
+      .adm-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.78rem; }
+      .adm-badge.confirmed, .adm-badge.sent { background: #dcefe0; color: #2d6a32; }
+      .adm-badge.pending_confirmation, .adm-badge.draft { background: #f3e8c8; color: #7a5c14; }
+      .adm-badge.unsubscribed, .adm-badge.failed { background: #f3d9d4; color: #93362a; }
+      .dark .adm-badge.confirmed, .dark .adm-badge.sent { background: #2c4a2e; color: #a8d5ab; }
+      .dark .adm-badge.pending_confirmation, .dark .adm-badge.draft { background: #4a3f22; color: #e3c878; }
+      .dark .adm-badge.unsubscribed, .dark .adm-badge.failed { background: #4a2a24; color: #e0988b; }
+      .adm-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+      .adm-row .adm-input, .adm-row .adm-select { width: auto; }
+      .adm-empty, .adm-loading, .adm-error { padding: 30px; text-align: center; color: var(--adm-muted); }
+      .adm-error { color: var(--adm-err); }
+      #adm-toast { position: fixed; bottom: 24px; right: 24px; z-index: 100; display: flex; flex-direction: column; gap: 8px; }
+      .adm-toast-msg { background: var(--adm-text); color: var(--adm-bg); padding: 12px 18px; border-radius: 8px; font-size: 0.9rem; }
+      .adm-toast-msg.err { background: var(--adm-err); color: #fff; }
+      .adm-chart { width: 100%; height: 180px; }
+      .adm-pagination { display: flex; gap: 8px; align-items: center; margin-top: 14px; font-size: 0.9rem; color: var(--adm-muted); }
+      @media (max-width: 640px) { .adm-main { padding: 16px; } .adm-grid { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+  </head>
+  <body>
+    <script is:inline>
+      // Apply the visitor's saved theme before render (same key as the public site).
+      try {
+        if (localStorage.getItem("ahura-theme") !== "light") document.documentElement.classList.add("dark");
+      } catch (e) {}
+    </script>
+
+    <div id="adm-login" class="adm-login" hidden>
+      <div class="adm-login-card">
+        <h1>ورود مدیریت</h1>
+        <p>توکن ادمین رو وارد کن. این توکن فقط روی دستگاه تو ذخیره می‌شه.</p>
+        <form id="adm-login-form">
+          <div class="adm-field">
+            <label for="adm-token">توکن ادمین</label>
+            <input id="adm-token" class="adm-input" type="password" dir="ltr" autocomplete="off" required />
+          </div>
+          <button class="adm-btn" type="submit">ورود</button>
+          <p id="adm-login-err" class="adm-error" hidden></p>
+        </form>
+      </div>
+    </div>
+
+    <div id="adm-app" class="adm-app" hidden>
+      <header class="adm-topbar">
+        <div class="adm-brand">AHURA.DEV — مدیریت</div>
+        <button id="adm-logout" class="adm-btn adm-btn-ghost">خروج</button>
+      </header>
+      <nav class="adm-nav">
+        {nav.map((n) => (
+          <a href={n.href} class={n.id === page ? "active" : ""}>{n.label}</a>
+        ))}
+      </nav>
+      <main class="adm-main">
+        <slot />
+      </main>
+    </div>
+
+    <div id="adm-toast"></div>
+
+    <script is:inline>
+      (function () {
+        var API = "https://ahura-api.admine-070.workers.dev";
+        var KEY = "ahura-admin-token";
+        var readyResolve;
+        var ready = new Promise(function (res) { readyResolve = res; });
+
+        function $(id) { return document.getElementById(id); }
+        function esc(s) {
+          return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+          });
+        }
+        function toast(msg, isErr) {
+          var d = document.createElement("div");
+          d.className = "adm-toast-msg" + (isErr ? " err" : "");
+          d.textContent = msg;
+          $("adm-toast").appendChild(d);
+          setTimeout(function () { d.remove(); }, 4000);
+        }
+        function showLogin(msg) {
+          $("adm-app").hidden = true;
+          $("adm-login").hidden = false;
+          if (msg) {
+            var e = $("adm-login-err");
+            e.textContent = msg;
+            e.hidden = false;
+          }
+        }
+        function showApp() {
+          $("adm-login").hidden = true;
+          $("adm-app").hidden = false;
+        }
+        async function api(path, opts) {
+          opts = opts || {};
+          var token = "";
+          try { token = sessionStorage.getItem(KEY) || ""; } catch (e) {}
+          var res = await fetch(API + path, {
+            method: opts.method || "GET",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+            body: opts.body ? JSON.stringify(opts.body) : undefined,
+          });
+          if (res.status === 401) {
+            try { sessionStorage.removeItem(KEY); } catch (e) {}
+            showLogin("توکن نامعتبره یا منقضی شده. دوباره وارد شو.");
+            throw new Error("unauthorized");
+          }
+          var ct = res.headers.get("content-type") || "";
+          if (ct.indexOf("application/json") === -1) return res;
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok) throw new Error((data && data.error) || ("http_" + res.status));
+          return data;
+        }
+        async function check(token) {
+          var res = await fetch(API + "/api/admin/stats", {
+            headers: { "Authorization": "Bearer " + token },
+          });
+          return res.ok;
+        }
+        function barChart(el, rows, labelKey, valueKey) {
+          if (!rows.length) {
+            el.innerHTML = '<div class="adm-empty">هنوز داده‌ای نیست.</div>';
+            return;
+          }
+          var max = Math.max.apply(null, rows.map(function (r) { return r[valueKey]; }).concat([1]));
+          var W = 720, H = 180, pad = 8;
+          var bw = (W - pad * 2) / rows.length;
+          var svg = '<svg class="adm-chart" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">';
+          rows.forEach(function (r, i) {
+            var h = Math.max(2, ((H - 40) * r[valueKey]) / max);
+            var x = pad + i * bw + 1;
+            var y = H - 24 - h;
+            svg += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + (bw - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="#5f5b52" opacity="0.75"><title>' + esc(r[labelKey]) + ": " + r[valueKey] + "</title></rect>";
+          });
+          svg += "</svg>";
+          el.innerHTML = svg;
+        }
+        $("adm-login-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          var token = $("adm-token").value.trim();
+          if (!token) return;
+          $("adm-login-err").hidden = true;
+          check(token).then(function (ok) {
+            if (!ok) {
+              showLogin("توکن اشتباهه.");
+              return;
+            }
+            try { sessionStorage.setItem(KEY, token); } catch (e2) {}
+            $("adm-token").value = "";
+            showApp();
+            readyResolve();
+          }).catch(function () { showLogin("ارتباط با سرور برقرار نشد."); });
+        });
+        $("adm-logout").addEventListener("click", function () {
+          try { sessionStorage.removeItem(KEY); } catch (e) {}
+          location.reload();
+        });
+        var existing = "";
+        try { existing = sessionStorage.getItem(KEY) || ""; } catch (e) {}
+        if (existing) {
+          check(existing).then(function (ok) {
+            if (ok) { showApp(); readyResolve(); }
+            else { try { sessionStorage.removeItem(KEY); } catch (e2) {} showLogin(); }
+          }).catch(function () { showLogin("ارتباط با سرور برقرار نشد."); });
+        } else {
+          showLogin();
+        }
+        window.AdminAPI = { api: api, ready: ready, toast: toast, esc: esc, barChart: barChart, API: API };
+      })();
+    </script>
+  </body>
+</html>

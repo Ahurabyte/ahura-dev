@@ -1,0 +1,108 @@
+---
+import AdminShell from "../../components/admin/AdminShell.astro";
+---
+
+<AdminShell title="مشترکین" page="subscribers">
+  <div class="adm-row">
+    <input id="adm-q" class="adm-input" placeholder="جستجو در ایمیل..." dir="ltr" style="text-align:left" />
+    <select id="adm-status" class="adm-select">
+      <option value="">همه‌ی وضعیت‌ها</option>
+      <option value="confirmed">تأیید شده</option>
+      <option value="pending_confirmation">در انتظار تأیید</option>
+      <option value="unsubscribed">لغو شده</option>
+      <option value="bounced">برگشتی</option>
+    </select>
+    <button id="adm-search" class="adm-btn">جستجو</button>
+    <button id="adm-export" class="adm-btn adm-btn-ghost">خروجی CSV</button>
+  </div>
+  <div id="adm-subs"><div class="adm-loading">در حال بارگذاری...</div></div>
+
+  <script is:inline>
+    (function () {
+      var page = 1, perPage = 20;
+      function faStatus(s) {
+        return { confirmed: "تأیید شده", pending_confirmation: "در انتظار تأیید", unsubscribed: "لغو شده", bounced: "برگشتی" }[s] || s;
+      }
+      function fmtDate(iso) {
+        if (!iso) return "—";
+        try { return new Date(iso).toLocaleDateString("fa-IR"); } catch (e) { return iso; }
+      }
+      function load() {
+        var A = window.AdminAPI;
+        var root = document.getElementById("adm-subs");
+        var q = document.getElementById("adm-q").value.trim();
+        var status = document.getElementById("adm-status").value;
+        var url = "/api/admin/subscribers?page=" + page + "&per_page=" + perPage
+          + (q ? "&q=" + encodeURIComponent(q) : "") + (status ? "&status=" + status : "");
+        root.innerHTML = '<div class="adm-loading">در حال بارگذاری...</div>';
+        A.api(url).then(function (res) {
+          var rows = res.subscribers, total = res.total;
+          var pages = Math.max(1, Math.ceil(total / perPage));
+          var h = '<div class="adm-card adm-table-wrap">';
+          if (!rows.length) {
+            h += '<div class="adm-empty">مشترکی پیدا نشد.</div>';
+          } else {
+            h += '<table class="adm-table"><tr><th>ایمیل</th><th>وضعیت</th><th>منبع</th><th>ثبت</th><th>تأیید</th><th>عملیات</th></tr>';
+            rows.forEach(function (r) {
+              h += "<tr><td dir='ltr' style='text-align:left'>" + A.esc(r.email) + '</td>'
+                + '<td><span class="adm-badge ' + r.status + '">' + faStatus(r.status) + "</span></td>"
+                + "<td>" + A.esc(r.source || "—") + "</td>"
+                + "<td>" + fmtDate(r.created_at) + "</td>"
+                + "<td>" + fmtDate(r.confirmed_at) + "</td>"
+                + '<td><div class="adm-row" style="margin:0">'
+                + (r.status !== "unsubscribed" ? '<button class="adm-btn adm-btn-ghost" data-unsub="' + r.id + '">لغو عضویت</button>' : "")
+                + ' <button class="adm-btn adm-btn-danger" data-del="' + r.id + '">حذف</button>'
+                + "</div></td></tr>";
+            });
+            h += "</table>";
+          }
+          h += "</div>";
+          h += '<div class="adm-pagination"><button class="adm-btn adm-btn-ghost" id="adm-prev" ' + (page <= 1 ? "disabled" : "") + ">قبلی</button>"
+            + "<span>صفحه‌ی " + page + " از " + pages + " (" + total + " مشترک)</span>"
+            + '<button class="adm-btn adm-btn-ghost" id="adm-next" ' + (page >= pages ? "disabled" : "") + ">بعدی</button></div>";
+          root.innerHTML = h;
+          root.querySelectorAll("[data-unsub]").forEach(function (b) {
+            b.addEventListener("click", function () {
+              if (!confirm("این مشترک لغو عضویت بشه؟")) return;
+              A.api("/api/admin/subscribers/" + b.getAttribute("data-unsub") + "/unsubscribe", { method: "POST" })
+                .then(function () { A.toast("لغو عضویت انجام شد."); load(); })
+                .catch(function (e) { A.toast("خطا: " + e.message, true); });
+            });
+          });
+          root.querySelectorAll("[data-del]").forEach(function (b) {
+            b.addEventListener("click", function () {
+              if (!confirm("رکورد این مشترک کاملاً حذف بشه؟ این عمل برگشت‌ناپذیره.")) return;
+              A.api("/api/admin/subscribers/" + b.getAttribute("data-del"), { method: "DELETE" })
+                .then(function () { A.toast("حذف شد."); load(); })
+                .catch(function (e) { A.toast("خطا: " + e.message, true); });
+            });
+          });
+          var prev = document.getElementById("adm-prev"), next = document.getElementById("adm-next");
+          if (prev) prev.addEventListener("click", function () { if (page > 1) { page--; load(); } });
+          if (next) next.addEventListener("click", function () { page++; load(); });
+        }).catch(function (e) {
+          if (e.message !== "unauthorized") root.innerHTML = '<div class="adm-error">خطا: ' + A.esc(e.message) + "</div>";
+        });
+      }
+      window.AdminAPI.ready.then(function () {
+        var A = window.AdminAPI;
+        document.getElementById("adm-search").addEventListener("click", function () { page = 1; load(); });
+        document.getElementById("adm-q").addEventListener("keydown", function (e) { if (e.key === "Enter") { page = 1; load(); } });
+        document.getElementById("adm-status").addEventListener("change", function () { page = 1; load(); });
+        document.getElementById("adm-export").addEventListener("click", function () {
+          var status = document.getElementById("adm-status").value;
+          A.api("/api/admin/subscribers/export" + (status ? "?status=" + status : "")).then(function (res) {
+            return res.blob();
+          }).then(function (blob) {
+            var a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "subscribers.csv";
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+          }).catch(function (e) { A.toast("خطا: " + e.message, true); });
+        });
+        load();
+      });
+    })();
+  </script>
+</AdminShell>

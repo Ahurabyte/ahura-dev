@@ -1,0 +1,53 @@
+---
+import AdminShell from "../../components/admin/AdminShell.astro";
+---
+
+<AdminShell title="آمار بازدید" page="analytics">
+  <div class="adm-row">
+    <label for="adm-days">بازه:</label>
+    <select id="adm-days" class="adm-select">
+      <option value="7">۷ روز اخیر</option>
+      <option value="30" selected>۳۰ روز اخیر</option>
+      <option value="90">۹۰ روز اخیر</option>
+    </select>
+  </div>
+  <div id="adm-analytics"><div class="adm-loading">در حال بارگذاری...</div></div>
+
+  <script is:inline>
+    (function () {
+      function load(days) {
+        var A = window.AdminAPI;
+        var root = document.getElementById("adm-analytics");
+        root.innerHTML = '<div class="adm-loading">در حال بارگذاری...</div>';
+        A.api("/api/admin/analytics?days=" + days).then(function (res) {
+          var an = res.analytics;
+          var h = '<div class="adm-section"><h2>ترافیک روزانه</h2><div class="adm-card" id="adm-chart"></div></div>';
+          h += '<div class="adm-section"><h2>پربازدیدترین صفحات</h2><div class="adm-card adm-table-wrap">' + table(an.top_pages, [["path", "صفحه"], ["views", "بازدید"], ["sessions", "نشست"]]) + "</div></div>";
+          h += '<div class="adm-section"><h2>ارجاع‌دهنده‌ها</h2><div class="adm-card adm-table-wrap">' + table(an.referrers, [["ref", "دامین"], ["views", "بازدید"]]) + "</div></div>";
+          h += '<div class="adm-section"><h2>دسته‌ی دستگاه</h2><div class="adm-card adm-table-wrap">' + table(an.devices, [["device", "دستگاه"], ["views", "بازدید"]]) + "</div></div>";
+          root.innerHTML = h;
+          A.barChart(document.getElementById("adm-chart"), an.daily, "d", "views");
+        }).catch(function (e) {
+          if (e.message !== "unauthorized") root.innerHTML = '<div class="adm-error">خطا: ' + A.esc(e.message) + "</div>";
+        });
+        function table(rows, cols) {
+          if (!rows.length) return '<div class="adm-empty">داده‌ای نیست.</div>';
+          var t = '<table class="adm-table"><tr>' + cols.map(function (c) { return "<th>" + c[1] + "</th>"; }).join("") + "</tr>";
+          rows.forEach(function (r) {
+            t += "<tr>" + cols.map(function (c) {
+              var v = r[c[0]];
+              var dir = c[0] === "path" || c[0] === "ref" ? " dir='ltr' style='text-align:left'" : "";
+              return "<td" + dir + ">" + A.esc(v) + "</td>";
+            }).join("") + "</tr>";
+          });
+          return t + "</table>";
+        }
+      }
+      window.AdminAPI.ready.then(function () {
+        var sel = document.getElementById("adm-days");
+        load(sel.value);
+        sel.addEventListener("change", function () { load(sel.value); });
+      });
+    })();
+  </script>
+</AdminShell>

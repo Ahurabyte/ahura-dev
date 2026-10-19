@@ -287,6 +287,15 @@ body {
   color: var(--color-accent-deep);
 }
 
+.slj-news .err {
+  font-size: 0.88rem;
+  color: #a33b2e;
+}
+
+.dark .slj-news .err {
+  color: #e08073;
+}
+
 /* ---------- article cards ---------- */
 .slj-grid {
   display: grid;

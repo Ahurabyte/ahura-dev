@@ -48,24 +48,55 @@ const posts = getPosts().slice(0, 4);
 
 <script is:inline>
   (function () {
+    var API = "https://ahura-api.admine-070.workers.dev";
     var form = document.getElementById('slj-news-form');
     if (!form) return;
+    function show(html) {
+      form.innerHTML = html;
+    }
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var input = form.querySelector('input');
       var email = input && input.value ? input.value.trim() : '';
       if (!email) return;
-      try {
-        localStorage.setItem('slj-newsletter', email);
-      } catch (err) {}
-      form.innerHTML =
-        '<p class="ok">عضو شدی! 🌱 به‌زودی خبرهای تازه می‌رسه.</p>';
-    });
-    try {
-      if (localStorage.getItem('slj-newsletter')) {
-        form.innerHTML =
-          '<p class="ok">قبلاً عضو شدی 🌱 منتظر نوشته‌های تازه باش.</p>';
+      var btn = form.querySelector('button');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'صبر کن...';
       }
-    } catch (err) {}
+      fetch(API + '/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, source: 'sidebar' }),
+      })
+        .then(function (r) {
+          return r.json().then(function (d) {
+            return { status: r.status, data: d };
+          });
+        })
+        .then(function (res) {
+          var d = res.data || {};
+          if (res.status === 200 && d.success) {
+            if (d.status === 'already_subscribed') {
+              show('<p class="ok">قبلاً عضو شدی 🌱 منتظر نوشته‌های تازه باش.</p>');
+            } else if (d.email_sent) {
+              show('<p class="ok">ایمیلت ثبت شد! 📩 لینک تأیید رو بزن تا عضویتت فعال بشه.</p>');
+            } else {
+              show('<p class="ok">ایمیلت ثبت شد. سرویس ارسال ایمیل هنوز فعال نیست؛ به‌محض فعال شدن، لینک تأیید برات می‌فرستیم.</p>');
+            }
+          } else if (res.status === 409 && d.code === 'previously_unsubscribed') {
+            show('<p class="err">این ایمیل قبلاً لغو عضویت کرده. اگه می‌خوای دوباره عضو بشی به اهورا پیام بده.</p>');
+          } else if (d.code === 'invalid_email') {
+            show('<p class="err">ایمیلی که وارد کردی معتبر نیست.</p>');
+          } else if (res.status === 429) {
+            show('<p class="err">زیادی تلاش کردی! کمی بعد دوباره امتحان کن.</p>');
+          } else {
+            show('<p class="err">یه مشکلی پیش اومد. دوباره تلاش کن.</p>');
+          }
+        })
+        .catch(function () {
+          show('<p class="err">ارتباط برقرار نشد. اینترنتت رو چک کن و دوباره تلاش کن.</p>');
+        });
+    });
   })();
 </script>

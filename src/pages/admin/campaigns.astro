@@ -1,0 +1,101 @@
+---
+import AdminShell from "../../components/admin/AdminShell.astro";
+---
+
+<AdminShell title="کمپین‌ها" page="campaigns">
+  <div id="adm-provider-note"></div>
+  <div class="adm-section">
+    <h2>کمپین جدید</h2>
+    <div class="adm-card">
+      <div class="adm-field"><label>عنوان (داخلی)</label><input id="adm-c-title" class="adm-input" /></div>
+      <div class="adm-field"><label>موضوع ایمیل</label><input id="adm-c-subject" class="adm-input" dir="ltr" style="text-align:left" /></div>
+      <div class="adm-field"><label>متن HTML</label><textarea id="adm-c-html" class="adm-textarea"></textarea></div>
+      <div class="adm-field"><label>متن ساده</label><textarea id="adm-c-text" class="adm-textarea" style="min-height:80px"></textarea></div>
+      <button id="adm-c-create" class="adm-btn">ذخیره‌ی پیش‌نویس</button>
+    </div>
+  </div>
+  <div class="adm-section">
+    <h2>کمپین‌ها</h2>
+    <div id="adm-campaigns"><div class="adm-loading">در حال بارگذاری...</div></div>
+  </div>
+
+  <script is:inline>
+    (function () {
+      function faStatus(s) {
+        return { draft: "پیش‌نویس", sending: "در حال ارسال", sent: "ارسال شده", failed: "ناموفق" }[s] || s;
+      }
+      function fmtDate(iso) {
+        if (!iso) return "—";
+        try { return new Date(iso).toLocaleString("fa-IR"); } catch (e) { return iso; }
+      }
+      function load() {
+        var A = window.AdminAPI;
+        var root = document.getElementById("adm-campaigns");
+        Promise.all([A.api("/api/admin/campaigns"), A.api("/api/admin/health")]).then(function (res) {
+          var campaigns = res[0].campaigns, health = res[1].health;
+          var note = document.getElementById("adm-provider-note");
+          if (!health.email_sending) {
+            note.innerHTML = '<div class="adm-card" style="margin-bottom:20px;border-color:var(--adm-err)"><strong>سرویس ایمیل فعال نیست.</strong> ارسال واقعی کمپین تا وقتی ارائه‌دهنده‌ی ایمیل پیکربندی نشده غیرفعاله. می‌تونی پیش‌نویس بسازی و ویرایش کنی.</div>';
+          } else { note.innerHTML = ""; }
+          if (!campaigns.length) {
+            root.innerHTML = '<div class="adm-card"><div class="adm-empty">هنوز کمپینی ساخته نشده.</div></div>';
+            return;
+          }
+          var h = '<div class="adm-card adm-table-wrap"><table class="adm-table"><tr><th>عنوان</th><th>موضوع</th><th>وضعیت</th><th>گیرندگان</th><th>ارسال‌شده</th><th>ساخته‌شده</th><th>عملیات</th></tr>';
+          campaigns.forEach(function (c) {
+            h += "<tr><td>" + A.esc(c.title) + "</td><td dir='ltr' style='text-align:left'>" + A.esc(c.subject) + '</td><td><span class="adm-badge ' + c.status + '">' + faStatus(c.status) + "</span></td>"
+              + "<td>" + c.recipient_count + "</td><td>" + c.sent_count + "</td><td>" + fmtDate(c.created_at) + "</td>"
+              + '<td><div class="adm-row" style="margin:0">'
+              + '<button class="adm-btn adm-btn-ghost" data-preview="' + c.id + '">پیش‌نمایش</button> '
+              + (c.status === "draft" ? '<button class="adm-btn" data-send="' + c.id + '">ارسال</button>' : "")
+              + "</div></td></tr>";
+            if (c.error) h += '<tr><td colspan="7" class="adm-error">' + A.esc(c.error) + "</td></tr>";
+          });
+          root.innerHTML = h + "</table></div>";
+          root.querySelectorAll("[data-preview]").forEach(function (b) {
+            b.addEventListener("click", function () {
+              var c = campaigns.find(function (x) { return x.id == b.getAttribute("data-preview"); });
+              var w = window.open("", "_blank");
+              w.document.write(c.body_html || "<p>(empty)</p>");
+              w.document.close();
+            });
+          });
+          root.querySelectorAll("[data-send]").forEach(function (b) {
+            b.addEventListener("click", function () {
+              if (!confirm("این کمپین برای همه‌ی مشترکین تأییدشده ارسال بشه؟ این عمل برگشت‌ناپذیره.")) return;
+              A.api("/api/admin/campaigns/" + b.getAttribute("data-send") + "/send", { method: "POST" })
+                .then(function () { A.toast("ارسال شد."); load(); })
+                .catch(function (e) {
+                  A.toast(e.message === "email_provider_not_configured" ? "سرویس ایمیل پیکربندی نشده؛ ارسال ممکن نیست." : "خطا: " + e.message, true);
+                });
+            });
+          });
+        }).catch(function (e) {
+          if (e.message !== "unauthorized") document.getElementById("adm-campaigns").innerHTML = '<div class="adm-error">خطا: ' + A.esc(e.message) + "</div>";
+        });
+      }
+      window.AdminAPI.ready.then(function () {
+        var A = window.AdminAPI;
+        document.getElementById("adm-c-create").addEventListener("click", function () {
+          var title = document.getElementById("adm-c-title").value.trim();
+          var subject = document.getElementById("adm-c-subject").value.trim();
+          if (!title || !subject) { A.toast("عنوان و موضوع لازمن.", true); return; }
+          A.api("/api/admin/campaigns", { method: "POST", body: {
+            title: title,
+            subject: subject,
+            body_html: document.getElementById("adm-c-html").value,
+            body_text: document.getElementById("adm-c-text").value,
+          }}).then(function () {
+            A.toast("پیش‌نویس ذخیره شد.");
+            document.getElementById("adm-c-title").value = "";
+            document.getElementById("adm-c-subject").value = "";
+            document.getElementById("adm-c-html").value = "";
+            document.getElementById("adm-c-text").value = "";
+            load();
+          }).catch(function (e) { A.toast("خطا: " + e.message, true); });
+        });
+        load();
+      });
+    })();
+  </script>
+</AdminShell>
