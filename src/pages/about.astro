@@ -1,10 +1,23 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { absoluteUrl } from '../lib/posts';
+
+const personLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'اهورا',
+  url: absoluteUrl('/about/'),
+  description: 'عاشق تکنولوژی — Ahura is a software developer and technology writer.',
+  knowsAbout: ['Artificial Intelligence', 'Open Source', 'Software Engineering', 'Web Development', 'Digital Health'],
+};
 ---
 
 <BaseLayout title="درباره من — اهورا.dev" description="عاشق تکنولوژی" current="about">
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(personLd)} />
   <article class="slj-article-head">
-    <h1>درباره من</h1>
+    <header>
+      <h1>درباره من</h1>
+    </header>
     <div class="slj-prose">
       <h2>عاشق تکنولوژی</h2>
       <p>

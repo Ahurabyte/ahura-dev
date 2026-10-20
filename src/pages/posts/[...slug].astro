@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { faDate, getPosts, withBase, FALLBACK_IMAGE } from '../../lib/posts';
+import { faDate, getPosts, withBase, FALLBACK_IMAGE, absoluteUrl, webpDims } from '../../lib/posts';
 
 interface PostModule {
   frontmatter: { title: string; description: string; pubDate: string };
@@ -24,13 +24,41 @@ const prev = idx > 0 ? posts[idx - 1] : null;
 const next = idx >= 0 && idx < posts.length - 1 ? posts[idx + 1] : null;
 const image = posts[idx]?.image ?? withBase(FALLBACK_IMAGE);
 const tags = posts[idx]?.tags ?? [];
+const imageRel = image.replace(new RegExp('^' + import.meta.env.BASE_URL), '');
+const dims = webpDims(imageRel);
+const absImage = absoluteUrl(image);
+const pageUrl = absoluteUrl(`/posts/${slug}/`);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: frontmatter.title,
+  description: frontmatter.description,
+  image: dims
+    ? { '@type': 'ImageObject', url: absImage, width: dims.width, height: dims.height }
+    : absImage,
+  author: { '@type': 'Person', name: 'اهورا', url: absoluteUrl('/about/') },
+  publisher: { '@type': 'Person', name: 'اهورا' },
+  datePublished: frontmatter.pubDate,
+  dateModified: frontmatter.pubDate,
+  mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl },
+  inLanguage: 'fa-IR',
+  keywords: tags.join(', '),
+};
 ---
 
-<BaseLayout title={`${frontmatter.title} — اهورا.dev`} description={frontmatter.description}>
+<BaseLayout
+  title={`${frontmatter.title} — اهورا.dev`}
+  description={frontmatter.description}
+  image={absImage}
+  type="article"
+  pubDate={frontmatter.pubDate}
+>
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <article class="slj-article-head">
     <a href={withBase("/")} class="slj-back">→ برگرد به خانه</a>
-    <div>
-      <time>{faDate(frontmatter.pubDate)}</time>
+    <header>
+      <time datetime={frontmatter.pubDate}>{faDate(frontmatter.pubDate)}</time>
       <h1>{frontmatter.title}</h1>
       <p class="lede">{frontmatter.description}</p>
       {tags.length > 0 && (
@@ -38,9 +66,9 @@ const tags = posts[idx]?.tags ?? [];
           {tags.map((t) => <span>#{t}</span>)}
         </p>
       )}
-    </div>
+    </header>
     <div class="ph">
-      <img src={image} alt="" />
+      <img src={image} alt={frontmatter.title} width={dims?.width} height={dims?.height} fetchpriority="high" />
     </div>
     <div class="slj-prose">
       <Content />

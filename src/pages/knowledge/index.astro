@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getPosts, withBase } from '../../lib/posts';
+import { CONCEPTS } from '../../data/knowledge';
+
+const posts = getPosts();
+const relatedCount = (tag?: string) => (tag ? posts.filter((p) => p.tags.includes(tag)).length : 0);
+const categories = [...new Set(CONCEPTS.map((c) => c.category))];
+---
+
+<BaseLayout title="Knowledge Base — اهورا.dev" description="موضوع‌ها و مفاهیم وبلاگ اهورا — تعریف هر مفهوم و نوشته‌های مرتبط با آن." withSidebar={false}>
+  <article class="slj-article-head">
+    <header>
+      <h1>Knowledge Base</h1>
+      <p class="lede">
+        نقشه‌ی موضوعی وبلاگ: هر مفهوم، تعریف خودش و نوشته‌های مرتبط رو داره.
+        نسخه‌ی Markdown همه‌ی این صفحه‌ها هم برای ایجنت‌ها کنارشون هست.
+      </p>
+    </header>
+    {categories.map((cat) => (
+      <section>
+        <h2>{cat}</h2>
+        <ul>
+          {CONCEPTS.filter((c) => c.category === cat).map((c) => (
+            <li>
+              <a href={withBase(`/knowledge/${c.slug}/`)}>{c.name}</a>
+              {c.nameFa && <> — {c.nameFa}</>}
+              {' '}· {relatedCount(c.tag) > 0 ? `${relatedCount(c.tag)} نوشته` : 'به‌زودی'}
+              <p>{c.description.split('.')[0]}.</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </article>
+</BaseLayout>

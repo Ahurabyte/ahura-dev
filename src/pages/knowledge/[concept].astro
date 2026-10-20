@@ -1,0 +1,51 @@
+---
+import type { GetStaticPaths } from "astro";
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getPosts, withBase, absoluteUrl, faDate } from '../../lib/posts';
+import { CONCEPTS, conceptBySlug } from '../../data/knowledge';
+
+export const getStaticPaths: GetStaticPaths = () =>
+  CONCEPTS.map((c) => ({ params: { concept: c.slug } }));
+
+const { concept } = Astro.params;
+const c = conceptBySlug(concept!);
+if (!c) throw new Error(`Unknown concept: ${concept}`);
+
+const posts = getPosts().filter((p) => c.tag && p.tags.includes(c.tag));
+const mdUrl = absoluteUrl(`/knowledge/${c.slug}/index.md`);
+const conceptLd = {
+  '@context': 'https://schema.org',
+  '@type': 'DefinedTerm',
+  name: c.name,
+  description: c.description,
+  inDefinedTermSet: absoluteUrl('/knowledge/'),
+  url: absoluteUrl(`/knowledge/${c.slug}/`),
+};
+---
+
+<BaseLayout title={`${c.name} — Knowledge Base`} description={c.description} type="article">
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(conceptLd)} />
+  <article class="slj-article-head">
+    <a href={withBase("/knowledge/")} class="slj-back">→ برگرد به Knowledge Base</a>
+    <header>
+      <h1>{c.name}</h1>
+      {c.nameFa && <p class="lede">{c.nameFa}</p>}
+      <p class="lede"><a href={mdUrl} rel="alternate">نسخه‌ی Markdown این صفحه</a></p>
+    </header>
+    <div class="slj-prose">
+      <p>{c.description}</p>
+      <h2>نوشته‌های مرتبط</h2>
+      {posts.length > 0 ? (
+        <ul>
+          {posts.map((p) => (
+            <li>
+              <a href={withBase(`/posts/${p.slug}/`)}>{p.title}</a> · <time>{faDate(p.pubDate)}</time>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>هنوز نوشته‌ای با این موضوع منتشر نشده — این صفحه فعلاً تعریف مفهومه و با انتشار نوشته‌های جدید به‌روز می‌شه.</p>
+      )}
+    </div>
+  </article>
+</BaseLayout>

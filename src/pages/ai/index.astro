@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { withBase } from '../../lib/posts';
+---
+
+<BaseLayout title="AI — اهورا.dev" description="لایه‌ی machine-readable وبلاگ اهورا: نسخه‌های Markdown، نقشه‌ی محتوا و فایل‌های مخصوص ایجنت‌ها." withSidebar={false}>
+  <article class="slj-article-head">
+    <header>
+      <h1>AI / Agents</h1>
+      <p class="lede">
+        این بخش، لایه‌ی مکملِ machine-readable سایته — جای HTML معمولی رو نمی‌گیره.
+        هر محتوای این وبلاگ از یک منبع واحد تولید می‌شه و هم‌زمان به صورت HTML،
+        Markdown، RSS و JSON-LD منتشر می‌شه.
+      </p>
+    </header>
+    <div class="slj-prose">
+      <h2>نقطه‌های ورود برای ایجنت‌ها</h2>
+      <ul>
+        <li><a href={withBase('/llms.txt')}>llms.txt</a> — ایندکس خلاصه‌ی کل سایت</li>
+        <li><a href={withBase('/llms-full.txt')}>llms-full.txt</a> — متن کامل همه‌ی نوشته‌ها در یک فایل</li>
+        <li><a href={withBase('/ai/content-map.md')}>content-map.md</a> — همه‌ی URLها و نسخه‌ی Markdown هرکدام</li>
+        <li><a href={withBase('/ai/topics.md')}>topics.md</a> — نقشه‌ی موضوعی با تعریف‌ها</li>
+        <li><a href={withBase('/about/author.md')}>about/author.md</a> — پروفایل canonical نویسنده</li>
+        <li><a href={withBase('/rss.xml')}>RSS</a> · <a href={withBase('/sitemap.xml')}>Sitemap</a></li>
+      </ul>
+      <h2>قاعده‌ی ارجاع</h2>
+      <p>
+        هر نوشته یک URL canonical داره (نسخه‌ی HTML). نسخه‌ی Markdown همان محتوا
+        با همان نویسنده و تاریخ است؛ برای ارجاع، URL نسخه‌ی HTML را ذکر کنید.
+      </p>
+    </div>
+  </article>
+</BaseLayout>

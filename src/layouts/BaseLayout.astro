@@ -9,6 +9,10 @@ interface Props {
   description?: string;
   withSidebar?: boolean;
   current?: 'home' | 'about';
+  image?: string;
+  type?: 'website' | 'article';
+  pubDate?: string;
+  modDate?: string;
 }
 
 const {
@@ -16,7 +20,14 @@ const {
   description = 'وبلاگ شخصی اهورا — یادداشت‌ها، تجربه‌ها و چیزهایی که یاد می‌گیرم.',
   withSidebar = true,
   current,
+  image,
+  type = 'website',
+  pubDate,
+  modDate,
 } = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site).toString();
+const ogImage = image ?? new URL(`${import.meta.env.BASE_URL}images/card-about.webp`, Astro.site).toString();
 ---
 
 <!doctype html>
@@ -24,7 +35,24 @@ const {
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
+    <meta name="author" content="اهورا" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:site_name" content="ahura.dev" />
+    <meta property="og:locale" content="fa_IR" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={type} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    {type === 'article' && pubDate && <meta property="article:published_time" content={pubDate} />}
+    {type === 'article' && (modDate ?? pubDate) && <meta property="article:modified_time" content={modDate ?? pubDate} />}
+    {type === 'article' && <meta property="article:author" content="اهورا" />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <link rel="alternate" type="application/rss+xml" title="ahura.dev — RSS" href={withBase('/rss.xml')} />
     <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>

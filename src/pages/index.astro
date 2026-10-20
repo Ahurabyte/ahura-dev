@@ -1,12 +1,22 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
-import { getPosts } from '../lib/posts';
+import { getPosts, absoluteUrl } from '../lib/posts';
 
 const posts = getPosts();
+
+const siteLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'ahura.dev',
+  url: absoluteUrl('/'),
+  inLanguage: 'fa-IR',
+  author: { '@type': 'Person', name: 'اهورا', url: absoluteUrl('/about/') },
+};
 ---
 
 <BaseLayout title="اهورا.dev — وبلاگ شخصی اهورا" current="home">
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(siteLd)} />
   <div class="slj-grid">
     {posts.map((post) => (
       <PostCard post={post} />

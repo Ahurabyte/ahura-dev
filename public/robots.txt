@@ -1,0 +1,24 @@
+# ahura.dev — crawler policy
+#
+# Search bots are welcome everywhere (indexing for AI/search results).
+# OAI-SearchBot serves OpenAI Search results; GPTBot is reserved by OpenAI
+# for potential model training. They are set deliberately and separately:
+# search is allowed, training crawls are allowed for now too.
+# Flip the GPTBot rule to Disallow if training-opt-out is ever wanted.
+
+User-agent: *
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://adsrdsr2.github.io/ahura-dev/sitemap.xml
