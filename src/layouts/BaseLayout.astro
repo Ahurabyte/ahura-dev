@@ -76,25 +76,37 @@ const {
     <script is:inline>
       // Privacy-conscious first-party analytics: one page-view event per page load.
       // No IP storage, no fingerprinting, honors Do Not Track.
+      // visitor = persistent per-browser id; session = rotated after 30 min of inactivity.
       (function () {
         try {
           if (navigator.doNotTrack === "1" || window.doNotTrack === "1") return;
-          var sid = null;
+          if (navigator.webdriver) return; // obvious automation: do not count
+          var vid = null, sid = null, sidTs = 0;
           try {
+            vid = localStorage.getItem("ahura-vid");
+            if (!vid) {
+              vid = newId();
+              localStorage.setItem("ahura-vid", vid);
+            }
             sid = localStorage.getItem("ahura-sid");
-            if (!sid) {
-              sid =
-                (crypto.randomUUID && crypto.randomUUID()) ||
-                "xxxxxxxx-xxxx-4xxx".replace(/x/g, function () {
-                  return ((Math.random() * 16) | 0).toString(16);
-                });
+            sidTs = parseInt(localStorage.getItem("ahura-sid-ts") || "0", 10) || 0;
+            if (!sid || Date.now() - sidTs > 30 * 60 * 1000) {
+              sid = newId();
               localStorage.setItem("ahura-sid", sid);
             }
+            localStorage.setItem("ahura-sid-ts", String(Date.now()));
           } catch (e) {
             return;
           }
-          var eventId =
-            (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+          function newId() {
+            return (
+              (crypto.randomUUID && crypto.randomUUID()) ||
+              "xxxxxxxx-xxxx-4xxx".replace(/x/g, function () {
+                return ((Math.random() * 16) | 0).toString(16);
+              })
+            );
+          }
+          var eventId = newId();
           var w = Math.min(window.screen.width, window.innerWidth || 0);
           var ua = navigator.userAgent || "";
           var device = /Mobi|Android|iPhone|iPad|Mobile/i.test(ua) ? (w > 900 ? "tablet" : "mobile") : w > 0 && w < 768 ? "mobile" : "desktop";
@@ -102,6 +114,7 @@ const {
           var payload = {
             event_id: eventId,
             session_id: sid,
+            visitor_id: vid,
             path: window.location.pathname,
             referrer: document.referrer || null,
             utm_source: params.get("utm_source"),

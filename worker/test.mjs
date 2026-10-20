@@ -89,6 +89,32 @@ test("analytics: stats reflect ingested events", async () => {
   assert.ok(r.data.stats.views_today >= 2, "test page-views should be counted");
 });
 
+test("analytics: obvious bots are filtered and never stored", async () => {
+  const r = await api("/api/analytics", {
+    method: "POST",
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" },
+    body: { event_id: randomUUID(), session_id: randomUUID(), path: "/__test__/bot", device: "desktop" },
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.filtered, "bot");
+  const stored = await d1("SELECT COUNT(*) c FROM analytics_events WHERE path = '/__test__/bot'");
+  assert.equal(stored.result[0].results[0].c, 0, "bot events must not reach storage");
+});
+
+test("analytics: visitor_id is stored and visitors are counted separately", async () => {
+  const vid = randomUUID();
+  const r = await api("/api/analytics", {
+    method: "POST",
+    headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126 Safari/537.36" },
+    body: { event_id: randomUUID(), session_id: randomUUID(), visitor_id: vid, path: "/__test__/visitor", device: "desktop" },
+  });
+  assert.equal(r.status, 200);
+  const row = await d1("SELECT visitor_id FROM analytics_events WHERE path = '/__test__/visitor'");
+  assert.equal(row.result[0].results[0].visitor_id, vid);
+  const s = await api("/api/admin/stats", { headers: auth });
+  assert.ok(s.data.stats.visitors_30d >= 1, "distinct visitors must be reported");
+});
+
 /* ---------- newsletter ---------- */
 
 test("subscribe: invalid email is rejected", async () => {

@@ -190,6 +190,17 @@ function domainOf(url) {
   }
 }
 
+/* Obvious-bot detection: only well-known automation/crawler signatures.
+ * Deliberately conservative — a real browser UA never matches these. */
+const BOT_UA_RE =
+  /bot|crawl|spider|slurp|headless|phantom|puppeteer|playwright|selenium|webdriver|lighthouse|curl|wget|scrapy|python-requests|python-urllib|go-http-client|java\/|okhttp|axios|node-fetch|httpclient|facebookexternalhit|ahrefs|semrush|mj12|dotbot|petalbot|bytespider|dataforseo/i;
+
+function isObviousBot(userAgent) {
+  const ua = String(userAgent || "").trim();
+  if (!ua) return true; // real browsers always send a UA
+  return BOT_UA_RE.test(ua);
+}
+
 /* ---------------- email provider adapter ---------------- */
 
 const mailProviders = {
@@ -218,6 +229,11 @@ async function handleAnalytics(req, env) {
   if (!(await checkRateLimit(db, `analytics:${ip}`, 300, 3600))) {
     return err("rate_limited", 429, "rate_limited");
   }
+  // Drop obvious bots before doing any storage work. We answer "success" so
+  // probes learn nothing; nothing is recorded.
+  if (isObviousBot(req.headers.get("user-agent"))) {
+    return json({ success: true, filtered: "bot" });
+  }
   let body;
   try {
     body = await readJson(req);
@@ -227,6 +243,7 @@ async function handleAnalytics(req, env) {
 
   const eventId = String(body.event_id || "").slice(0, 64);
   const sessionId = String(body.session_id || "").slice(0, 64);
+  const visitorId = String(body.visitor_id || "").slice(0, 64);
   const path = cleanPath(body.path);
   const device = DEVICES.has(body.device) ? body.device : "unknown";
   const referrerDomain = body.referrer ? domainOf(body.referrer) : null;
@@ -237,18 +254,20 @@ async function handleAnalytics(req, env) {
 
   if (!/^[0-9a-fA-F-]{8,64}$/.test(eventId)) return err("invalid_event_id", 400, "invalid_event");
   if (!/^[0-9a-fA-F-]{8,64}$/.test(sessionId)) return err("invalid_session_id", 400, "invalid_event");
+  if (visitorId && !/^[0-9a-fA-F-]{8,64}$/.test(visitorId)) return err("invalid_visitor_id", 400, "invalid_event");
   if (path.length < 1) return err("invalid_path", 400, "invalid_event");
 
   try {
     await db
       .prepare(
         `INSERT INTO analytics_events
-         (event_id, session_id, path, referrer_domain, utm_source, utm_medium, utm_campaign, device)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+         (event_id, session_id, visitor_id, path, referrer_domain, utm_source, utm_medium, utm_campaign, device)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         eventId,
         sessionId,
+        visitorId || null,
         path,
         referrerDomain,
         utm.utm_source || null,
@@ -435,17 +454,19 @@ async function adminStats(db) {
   const d7 = (await q("SELECT COUNT(*) c FROM analytics_events WHERE created_at >= datetime('now','-7 days')")).c || 0;
   const d30 = (await q("SELECT COUNT(*) c FROM analytics_events WHERE created_at >= datetime('now','-30 days')")).c || 0;
   const sessions = (await q("SELECT COUNT(DISTINCT session_id) c FROM analytics_events WHERE created_at >= datetime('now','-30 days')")).c || 0;
+  const visitors = (await q("SELECT COUNT(DISTINCT visitor_id) c FROM analytics_events WHERE created_at >= datetime('now','-30 days') AND visitor_id IS NOT NULL")).c || 0;
   const confirmed = (await q("SELECT COUNT(*) c FROM subscribers WHERE status='confirmed'")).c || 0;
   const pending = (await q("SELECT COUNT(*) c FROM subscribers WHERE status='pending_confirmation'")).c || 0;
   const unsub = (await q("SELECT COUNT(*) c FROM subscribers WHERE status='unsubscribed'")).c || 0;
-  return { views_today: today, views_7d: d7, views_30d: d30, sessions_30d: sessions, subscribers_confirmed: confirmed, subscribers_pending: pending, subscribers_unsubscribed: unsub };
+  return { views_today: today, views_7d: d7, views_30d: d30, sessions_30d: sessions, visitors_30d: visitors, subscribers_confirmed: confirmed, subscribers_pending: pending, subscribers_unsubscribed: unsub };
 }
 
 async function adminAnalytics(db, days) {
   days = [7, 30, 90].includes(days) ? days : 30;
   const daily = await db
     .prepare(
-      `SELECT date(created_at) d, COUNT(*) views, COUNT(DISTINCT session_id) sessions
+      `SELECT date(created_at) d, COUNT(*) views, COUNT(DISTINCT session_id) sessions,
+              COUNT(DISTINCT visitor_id) visitors
        FROM analytics_events WHERE created_at >= datetime('now', ?)
        GROUP BY d ORDER BY d`
     )
