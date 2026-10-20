@@ -95,7 +95,7 @@ const ogImage = image ?? new URL(`${import.meta.env.BASE_URL}images/card-about.w
             <slot />
           </main>
           <footer class="slj-footer">
-            ساخته شده توسط اهورا · <a href={withBase("/about")}>درباره من</a>
+            <a href={withBase("/about")}>درباره من</a>
           </footer>
         </div>
         {withSidebar && <Sidebar />}
