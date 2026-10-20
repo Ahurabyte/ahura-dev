@@ -1,0 +1,126 @@
+/* w-two-worlds: Lieutenant 1's inbox and the two worlds that could have produced it (s-04).
+   Everything is scoped to the mount and uses tokens only; the mount sits inside the page's .night scope,
+   so the token names resolve to the moonlit palette.
+   Colour meaning (page contract): ATTACK = --c2 + sword, RETREAT = --c1 + U-turn, traitor = --c5 + mask + "TRAITOR",
+   doubt = --c4 + "?", agreement = --good + check, failure/split = --bad + X. */
+
+[data-widget="w-two-worlds"] { position: relative; }
+[data-widget="w-two-worlds"] .tw { display: flex; flex-direction: column; gap: var(--sp-1); font-family: var(--font-sans); color: var(--ink); min-height: 300px; }
+[data-widget="w-two-worlds"] .tw-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+[data-widget="w-two-worlds"] p { margin: 0; }
+
+/* ---- inboxes ------------------------------------------------------------------------------- */
+[data-widget="w-two-worlds"] .tw-inboxes { display: flex; gap: var(--sp-1); flex: none; }
+[data-widget="w-two-worlds"] .tw-inbox { flex: 1 1 0; min-width: 0; padding: 6px 10px 8px; border: 1px solid var(--line); border-radius: var(--radius-2);
+  background: color-mix(in srgb, var(--bg) 72%, transparent); transition: opacity var(--dur-2), border-color var(--dur-2); }
+[data-widget="w-two-worlds"] .tw-inbox[data-who="L1"] { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+[data-widget="w-two-worlds"] .tw-inbox.is-dim { opacity: .5; border-color: var(--line); }
+[data-widget="w-two-worlds"] .tw-inbox[data-who="L2"] { text-align: right; border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+[data-widget="w-two-worlds"] .tw-inbox[hidden] { display: none; }
+[data-widget="w-two-worlds"] .tw-inbox-h { display: flex; align-items: center; gap: 6px; font: 600 11px/14px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+[data-widget="w-two-worlds"] .tw-inbox[data-who="L2"] .tw-inbox-h { justify-content: flex-end; }
+[data-widget="w-two-worlds"] .tw-inbox-h svg { width: 14px; height: 14px; flex: none; }
+[data-widget="w-two-worlds"] .tw-inbox ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+[data-widget="w-two-worlds"] .tw-inbox li { display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; row-gap: 2px; min-width: 0; }
+[data-widget="w-two-worlds"] .tw-inbox[data-who="L2"] li { justify-content: flex-end; }
+[data-widget="w-two-worlds"] .tw-from { font: 500 12px/16px var(--font-sans); color: var(--ink-3); white-space: nowrap; }
+[data-widget="w-two-worlds"] .tw-from::after { content: ":"; }
+
+/* message chips (HTML); the SVG chips copy this look */
+[data-widget="w-two-worlds"] .tw-chip { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; padding: 2px 9px; border-radius: 999px;
+  border: 1.5px solid var(--chip-c); background: var(--surface); font: 650 12px/16px var(--font-sans); color: var(--ink);
+  transition: box-shadow var(--dur-2), transform var(--dur-2); }
+[data-widget="w-two-worlds"] .tw-chip[data-v="A"] { --chip-c: var(--c2); }
+[data-widget="w-two-worlds"] .tw-chip[data-v="R"] { --chip-c: var(--c1); }
+[data-widget="w-two-worlds"] .tw-chip svg { width: 14px; height: 14px; flex: none; color: var(--chip-c); }
+[data-widget="w-two-worlds"] .tw-chip.is-link { box-shadow: 0 0 0 3px color-mix(in srgb, var(--chip-c) 32%, transparent), 0 0 18px -2px var(--chip-c); }
+[data-widget="w-two-worlds"] .tw-chip.is-pulse { animation: tw-pulse 900ms var(--ease-out) 1; }
+@keyframes tw-pulse { 0%, 100% { transform: none; } 35% { transform: scale(1.08); } }
+
+/* ---- stage (the SVG worlds) ---------------------------------------------------------------- */
+[data-widget="w-two-worlds"] .tw-stage { position: relative; flex: 1 1 auto; min-height: 120px; }
+[data-widget="w-two-worlds"] .tw-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+[data-widget="w-two-worlds"] :where(.tw-svg text) { font: 500 12px/1 var(--font-sans); fill: var(--ink-2); }
+[data-widget="w-two-worlds"] .tw-halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+[data-widget="w-two-worlds"] .tw-ground { fill: var(--surface-2); opacity: .45; }
+[data-widget="w-two-worlds"] .tw-tag-world { font: 600 11.5px/1 var(--font-mono); letter-spacing: .08em; fill: var(--ink-3); }
+[data-widget="w-two-worlds"] .tw-title { font: 700 12px/1 var(--font-sans); fill: var(--ink); }
+[data-widget="w-two-worlds"] .tw-sub { font: 650 11.5px/1 var(--font-sans); fill: var(--c5); }
+
+[data-widget="w-two-worlds"] .tw-ring { fill: var(--surface-2); stroke: var(--ink-3); stroke-width: 1.5; }
+[data-widget="w-two-worlds"] .tw-camp.is-you .tw-ring { stroke: var(--accent); stroke-width: 2.5; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 70%, transparent)); }
+[data-widget="w-two-worlds"] .tw-camp.is-traitor .tw-ring { stroke: var(--c5); stroke-width: 2.5; fill: color-mix(in srgb, var(--c5) 18%, var(--surface-2)); }
+[data-widget="w-two-worlds"] .tw-tent { color: var(--ink-2); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--c4) 50%, transparent)); }
+[data-widget="w-two-worlds"] .tw-mask { color: var(--c5); }
+[data-widget="w-two-worlds"] .tw-q { color: var(--c4); }
+[data-widget="w-two-worlds"] .tw-name { font: 650 13px/1 var(--font-sans); fill: var(--ink); }
+[data-widget="w-two-worlds"] .tw-name.is-you { fill: var(--accent); }
+[data-widget="w-two-worlds"] .tw-traitor-t { font: 750 11.5px/1 var(--font-mono); letter-spacing: .08em; fill: var(--c5); }
+
+[data-widget="w-two-worlds"] .tw-sc-bg { fill: var(--surface); stroke-width: 1.5; }
+[data-widget="w-two-worlds"] .tw-sc-t { font: 650 12px/1 var(--font-sans); fill: var(--ink); }
+[data-widget="w-two-worlds"] .tw-sc-t2 { font: 500 11.5px/1 var(--font-sans); fill: var(--ink-2); }
+[data-widget="w-two-worlds"] .tw-lie { font: 750 11.5px/1 var(--font-mono); letter-spacing: .06em; fill: var(--c5); }
+[data-widget="w-two-worlds"] .tw-true { font: 650 11.5px/1 var(--font-mono); letter-spacing: .06em; fill: var(--ink-3); }
+[data-widget="w-two-worlds"] .tw-dec-bg { stroke-width: 2; }
+[data-widget="w-two-worlds"] .tw-dec-t { font: 750 12px/1 var(--font-sans); fill: var(--ink); }
+[data-widget="w-two-worlds"] .tw-dim { opacity: .3; }
+[data-widget="w-two-worlds"] .tw-eq { font: 700 30px/1 var(--font-serif); fill: var(--accent); }
+[data-widget="w-two-worlds"] .tw-crack { fill: none; stroke: var(--bad); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--bad) 65%, transparent)); }
+[data-widget="w-two-worlds"] .tw-split-bg { fill: var(--surface); stroke: var(--bad); stroke-width: 2; }
+[data-widget="w-two-worlds"] .tw-split-t { font: 750 12px/1 var(--font-sans); fill: var(--bad); }
+[data-widget="w-two-worlds"] .tw-pop { transform-box: fill-box; transform-origin: center; }
+[data-widget="w-two-worlds"] .tw-rider { color: var(--ink); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 80%, transparent)); pointer-events: none; }
+
+/* ---- caption and goals ---------------------------------------------------------------------- */
+[data-widget="w-two-worlds"] .tw-cap { flex: none; min-height: 36px; font: 600 13px/18px var(--font-sans); color: var(--ink-2); text-align: center; text-wrap: balance; }
+[data-widget="w-two-worlds"] .tw-cap b { color: var(--ink); }
+[data-widget="w-two-worlds"] .tw-cap .a { color: var(--c2); }
+[data-widget="w-two-worlds"] .tw-cap .r { color: var(--c1); }
+[data-widget="w-two-worlds"] .tw-cap .bad { color: var(--bad); }
+
+[data-widget="w-two-worlds"] .tw-goals { flex: none; display: grid; gap: 2px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-2); background: var(--bg); }
+[data-widget="w-two-worlds"] .tw-goal { display: flex; align-items: baseline; gap: 6px; font: 12px/16px var(--font-sans); color: var(--ink-3); transition: color var(--dur-2); }
+[data-widget="w-two-worlds"] .tw-goal b { color: var(--ink-2); white-space: nowrap; }
+[data-widget="w-two-worlds"] .tw-goal-txt { flex: 1 1 auto; min-width: 0; }
+[data-widget="w-two-worlds"] .tw-goal-st { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 7px; border-radius: 999px; font: 700 11px/16px var(--font-mono); letter-spacing: .04em; text-transform: uppercase; }
+[data-widget="w-two-worlds"] .tw-goal-st:empty { display: none; }
+[data-widget="w-two-worlds"] .tw-goal-st svg { width: 11px; height: 11px; }
+[data-widget="w-two-worlds"] .tw-goal.is-hi { color: var(--ink); }
+[data-widget="w-two-worlds"] .tw-goal.is-hi b { color: var(--accent); }
+[data-widget="w-two-worlds"] .tw-goal.is-hi .tw-goal-st { color: var(--accent-ink); background: var(--accent); }
+[data-widget="w-two-worlds"] .tw-goal.is-bad { color: var(--ink); }
+[data-widget="w-two-worlds"] .tw-goal.is-bad b { color: var(--bad); }
+[data-widget="w-two-worlds"] .tw-goal.is-bad .tw-goal-st { color: var(--bad); border: 1px solid var(--bad); }
+[data-widget="w-two-worlds"] .tw-goal.is-na .tw-goal-txt { text-decoration: line-through; text-decoration-color: var(--ink-4); }
+[data-widget="w-two-worlds"] .tw-goal.is-na .tw-goal-st { color: var(--ink-3); border: 1px dashed var(--ink-4); text-transform: none; font-family: var(--font-sans); letter-spacing: 0; font-weight: 600; }
+
+/* narrow canvases (phones): tighter type, captions still ≥ 11px */
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-cap { font-size: 12.5px; line-height: 17px; min-height: 34px; }
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-goal { font-size: 11.5px; line-height: 15px; }
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-inbox { padding: 5px 8px 6px; }
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-from { font-size: 11.5px; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget="w-two-worlds"] .tw-chip.is-pulse { animation: none; }
+}
+
+/* phones, steps 5-6: both inboxes as two aligned rows */
+[data-widget="w-two-worlds"] .tw-compare li { flex-wrap: nowrap; }
+[data-widget="w-two-worlds"] .tw-compare li.is-dim { opacity: .5; }
+[data-widget="w-two-worlds"] .tw-who { flex: none; width: 34px; font: 650 11.5px/16px var(--font-sans); color: var(--ink-2); }
+[data-widget="w-two-worlds"] .tw-compare li[data-row="L1"] .tw-who { color: var(--accent); }
+[data-widget="w-two-worlds"] .tw-compare .tw-chip { padding: 2px 7px; font-size: 11.5px; white-space: nowrap; }
+[data-widget="w-two-worlds"] .tw-compare .tw-chip svg { width: 12px; height: 12px; }
+
+/* phones: the goal card folds to two pills; a goal in play opens to its full sentence */
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-goals { display: flex; flex-wrap: wrap; gap: 4px 6px; padding: 5px 8px; }
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-goal { flex: 0 0 auto; }
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-goal .tw-goal-txt { display: none; }
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-goal.is-hi,
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-goal.is-bad { flex: 1 1 100%; }
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-goal.is-hi .tw-goal-txt,
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-goal.is-bad .tw-goal-txt { display: inline; }
+[data-widget="w-two-worlds"] .tw-eq-s { font-size: 24px; }
+[data-widget="w-two-worlds"] .tw[data-mode="narrow"] .tw-goal:not(.is-hi):not(.is-bad) { padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; }
+[data-widget="w-two-worlds"] .tw-goal-st .tw-sr { text-transform: none; }

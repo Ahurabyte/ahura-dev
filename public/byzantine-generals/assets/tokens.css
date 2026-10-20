@@ -1,0 +1,79 @@
+/* Didactician default design tokens (8px grid).
+   Builders copy this to site/assets/tokens.css. If the user supplied tokens, map theirs onto
+   these names instead of inventing new ones, so components.css and widgets keep working.
+   Widgets must use these variables, never hard-coded colours or sizes. */
+:root {
+  /* spacing: 8px grid (half-steps only for tight UI such as chips and captions) */
+  --sp-0: 0; --sp-half: 4px; --sp-1: 8px; --sp-2: 16px; --sp-3: 24px; --sp-4: 32px;
+  --sp-5: 40px; --sp-6: 48px; --sp-8: 64px; --sp-10: 80px; --sp-12: 96px;
+
+  /* type: body 18/28 on desktop, 17/26 on mobile; line heights are multiples of 4 */
+  --font-sans: "Vazirmatn", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Vazirmatn", "Iowan Old Style", Georgia, serif;
+  --font-mono: "Vazirmatn", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-body: var(--font-serif);
+  --fs-caption: 0.8125rem;  /* 13px: captions, labels, rail */
+  --lh-caption: 1.25rem;
+  --fs-small: 0.9375rem;    /* 15px */
+  --lh-small: 1.5rem;
+  --fs-body: 1.125rem;      /* 18px */
+  --lh-body: 1.75rem;
+  --fs-h3: 1.25rem;  --lh-h3: 1.75rem;
+  --fs-h2: 1.625rem; --lh-h2: 2.25rem;
+  --fs-h1: 2.5rem;   --lh-h1: 3rem;
+  --measure: 66ch;          /* prose line length */
+
+  /* colour: neutral ink scale + one accent + semantic series colours for diagrams */
+  --bg: #f7f0e1;
+  --surface: #fffaf0;
+  --surface-2: #f0e6d2;
+  --ink: #2e2b22;           /* primary text */
+  --ink-2: #57503f;         /* secondary text */
+  --ink-3: #8a7c62;         /* captions, muted labels */
+  --ink-4: #c9bb9c;         /* rules, glyphs, disabled */
+  --line: #e3d8bf;
+  --accent: #9a6d1c;
+  --accent-ink: #fffaf0;
+  --focus: #9a6d1c;
+  --good: #4d7a35; --bad: #b03a2e; --warn: #9a6400;
+  /* diagram series: distinguishable in both themes and for common colour-vision deficiencies.
+     Use them by meaning ("the input", "the output"), keep the meaning constant across the piece. */
+  --c1: #647d33; --c2: #bc4a26; --c3: #2e7d6b; --c4: #c08a1e; --c5: #8a3b63; --c6: #6b6152;
+  --c1-soft: #647d331f; --c2-soft: #bc4a261f; --c3-soft: #2e7d6b1f; --c4-soft: #c08a1e1f;
+
+  --radius-1: 4px; --radius-2: 8px; --radius-3: 16px;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / .06), 0 2px 8px rgb(0 0 0 / .04);
+  --stroke: 2px;            /* default diagram stroke */
+  --tap: 44px;              /* minimum touch target */
+
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
+  --dur-1: 150ms; --dur-2: 300ms; --dur-3: 600ms;
+}
+
+@media (max-width: 599px) {
+  :root { --fs-body: 1.0625rem; --lh-body: 1.625rem; --fs-h1: 2rem; --lh-h1: 2.5rem; --fs-h2: 1.375rem; --lh-h2: 2rem; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1d1913; --surface: #26201a; --surface-2: #2f2820;
+    --ink: #ece4d3; --ink-2: #cfc4ab; --ink-3: #a3977d; --ink-4: #655c4b; --line: #3d362a;
+    --accent: #d9a441; --accent-ink: #1d1913; --focus: #e8bc5e;
+    --good: #93c26d; --bad: #e8836b; --warn: #e0aa4e;
+    --c1: #a9bf74; --c2: #ef8a58; --c3: #6fc2ab; --c4: #eec25e; --c5: #d69cc3; --c6: #b3a88f;
+    --c1-soft: #a9bf7426; --c2-soft: #ef8a5826; --c3-soft: #6fc2ab26; --c4-soft: #eec25e26;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / .4);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1d1913; --surface: #26201a; --surface-2: #2f2820;
+  --ink: #ece4d3; --ink-2: #cfc4ab; --ink-3: #a3977d; --ink-4: #655c4b; --line: #3d362a;
+  --accent: #d9a441; --accent-ink: #1d1913; --focus: #e8bc5e;
+  --good: #93c26d; --bad: #e8836b; --warn: #e0aa4e;
+  --c1: #a9bf74; --c2: #ef8a58; --c3: #6fc2ab; --c4: #eec25e; --c5: #d69cc3; --c6: #b3a88f;
+  --c1-soft: #a9bf7426; --c2-soft: #ef8a5826; --c3-soft: #6fc2ab26; --c4-soft: #eec25e26;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-1: 0ms; --dur-2: 0ms; --dur-3: 0ms; }
+}

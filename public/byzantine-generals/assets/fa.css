@@ -1,0 +1,126 @@
+/* Persian (fa-IR) adaptation layer for the Byzantine Generals explainer.
+   Self-hosted Vazirmatn (the blog's own font), RTL fixes, and Persian
+   typography rules (no letter-spacing / uppercase on Persian script —
+   letters must stay joined). Loaded last, after the original styles. */
+
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(fonts/vazirmatn-arabic-400-normal.woff2) format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(fonts/vazirmatn-latin-400-normal.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(fonts/vazirmatn-arabic-500-normal.woff2) format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(fonts/vazirmatn-latin-500-normal.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(fonts/vazirmatn-arabic-700-normal.woff2) format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(fonts/vazirmatn-latin-700-normal.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url(fonts/vazirmatn-arabic-800-normal.woff2) format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url(fonts/vazirmatn-latin-800-normal.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Persian line heights (Vazirmatn needs more air than the Latin serif) */
+:root {
+  --lh-body: 2.125rem;
+  --lh-h1: 3.625rem;
+  --lh-h2: 2.875rem;
+  --lh-h3: 2.125rem;
+  --lh-small: 1.75rem;
+  --lh-caption: 1.5rem;
+}
+@media (max-width: 599px) {
+  :root { --lh-body: 2rem; --lh-h1: 3rem; --lh-h2: 2.5rem; }
+}
+
+/* No letter-spacing, no uppercase transforms on Persian labels */
+.d-kicker, .d-meta b, .d-rail-label, .d-rail-time, .d-replay, .d-check-kind,
+.pbar-label, .sec-kicker, .hs-count, .hs-rule, .hs-chip-n, .rules-card-h,
+.rules-tag, .rule-table th, .route dt, .sources h2,
+.hero-svg .city-label, .hero-svg .camp-label,
+[data-widget="w-traitor"] .wt-pill, [data-widget="w-traitor"] .wt-tcard-h,
+[data-widget="w-traitor"] .wt-replay,
+[data-widget="w-two-worlds"] .tw-inbox-h, [data-widget="w-two-worlds"] .tw-tag-world,
+[data-widget="w-two-worlds"] .tw-traitor-t, [data-widget="w-two-worlds"] .tw-lie,
+[data-widget="w-two-worlds"] .tw-true, [data-widget="w-two-worlds"] .tw-goal-st {
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+/* Negative tracking on headings would disconnect Persian letters */
+.d-hero h1, .d-main h2, .hero h1 { letter-spacing: 0 !important; }
+
+/* Progress fills grow from the right in RTL */
+.pbar-fill { transform-origin: right; }
+
+/* Physical text alignment → logical start */
+.d-option,
+.rule-table caption, .rule-table th,
+[data-widget="w-traitor"] .wt-tab,
+[data-widget="w-traitor"] .wt-order,
+[data-widget="w-traitor"] .wt-chip { text-align: start; }
+.sources ol { padding-left: 0; padding-inline-start: var(--sp-3); }
+[data-widget="w-two-worlds"] .tw-inbox[data-who="L2"] { text-align: left; }
+
+/* The formula is Latin math: keep it LTR and isolated */
+.rule-formula { direction: ltr; unicode-bidi: isolate; letter-spacing: 0; }
+
+/* SVG diagram labels in the page font */
+svg text { font-family: var(--font-sans); }
+
+/* Blog back-link in the footer */
+.blog-home-link { display: inline-block; margin-top: var(--sp-3); font-weight: 700; }
+
+/* Handshake badges: keep camp A's badge under camp A (physical left) and
+   camp B's under camp B, while the badge text itself stays RTL */
+.hs-badges { direction: ltr; }
+.hs-badge { direction: rtl; text-align: right; justify-content: flex-start; }
+.hs-badge[data-camp="A"] { flex-direction: row-reverse; }
+.hs-badge[data-camp="B"] { flex-direction: row; justify-content: flex-start; }

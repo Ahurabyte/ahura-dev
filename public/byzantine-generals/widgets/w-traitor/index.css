@@ -1,0 +1,219 @@
+/* w-traitor: scoped to the mount; colours only from tokens (the mount sits in the page's .night scope).
+   ATTACK = --c2 + sword, RETREAT = --c1 + U-turn (decisions); a message = envelope #i-msg in that colour + the quoted word; traitor = --c5 + mask + "TRAITOR", met = --good + check. */
+
+[data-widget="w-traitor"] .wt {
+  --wt-lie: var(--c5);
+  --wt-lie-soft: color-mix(in srgb, var(--c5) 18%, transparent);
+  position: relative; display: flex; flex-direction: column; gap: var(--sp-1);
+  height: 488px; font-family: var(--font-sans); color: var(--ink);
+}
+[data-widget="w-traitor"] .wt.is-narrow { height: 508px; gap: 6px; }
+[data-widget="w-traitor"] p { margin: 0; }
+[data-widget="w-traitor"] button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+[data-widget="w-traitor"] button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+[data-widget="w-traitor"] .wt-ic { width: 16px; height: 16px; flex: none; }
+[data-widget="w-traitor"] .wt-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---- tabs ---- */
+[data-widget="w-traitor"] .wt-tabs { flex: none; display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 6px; height: var(--tap); }
+[data-widget="w-traitor"] .wt-tab {
+  min-height: var(--tap); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 8px;
+  border: 1px solid var(--line); border-radius: var(--radius-2); background: var(--bg); color: var(--ink-2);
+  font: 600 14px/16px var(--font-sans); cursor: pointer; text-align: left;
+  transition: border-color var(--dur-1), background var(--dur-1), color var(--dur-1), box-shadow var(--dur-2);
+}
+[data-widget="w-traitor"] .wt-tab:hover { color: var(--ink); border-color: var(--ink-4); }
+[data-widget="w-traitor"] .wt-tab[aria-selected="true"] { color: var(--ink); background: var(--surface-2); border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
+[data-widget="w-traitor"] .wt-tab[data-tab="2"] { color: var(--ink); border-color: color-mix(in srgb, var(--c5) 55%, var(--line)); }
+[data-widget="w-traitor"] .wt-tab[data-tab="2"][aria-selected="true"] { border-color: var(--wt-lie); background: var(--wt-lie-soft); box-shadow: inset 0 -3px 0 var(--wt-lie), 0 0 22px -8px var(--wt-lie); }
+[data-widget="w-traitor"] .wt-tab-n { flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid currentColor; font: 700 11px/1 var(--font-mono); }
+[data-widget="w-traitor"] .wt-tab-mask { width: 20px; height: 20px; flex: none; color: var(--wt-lie); }
+[data-widget="w-traitor"] .is-narrow .wt-tabs { grid-template-columns: 1fr 1fr 1.2fr; }
+[data-widget="w-traitor"] .is-narrow .wt-tab { font-size: 13px; padding: 0 4px; gap: 4px; }
+[data-widget="w-traitor"] .is-narrow .wt-tab-n { width: 18px; height: 18px; font-size: 11px; }
+[data-widget="w-traitor"] .is-narrow .wt-tab-l { white-space: nowrap; }
+[data-widget="w-traitor"] .is-narrow .wt-tab[data-tab="2"] .wt-tab-l { white-space: normal; }
+[data-widget="w-traitor"] .is-narrow .wt-tab-mask { display: none; }
+
+/* ---- panel ---- */
+[data-widget="w-traitor"] .wt-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+[data-widget="w-traitor"] .is-narrow .wt-panel { gap: 6px; }
+[data-widget="w-traitor"] .wt-cases { flex: none; display: grid; height: 40px; }
+[data-widget="w-traitor"] .is-narrow .wt-cases { height: 54px; }
+[data-widget="w-traitor"] .wt-case { grid-area: 1 / 1; visibility: hidden; font: 15px/20px var(--font-sans); color: var(--ink-2); overflow: hidden; }
+[data-widget="w-traitor"] .is-narrow .wt-case { font-size: 13px; line-height: 18px; }
+[data-widget="w-traitor"] .wt-case.on { visibility: visible; }
+[data-widget="w-traitor"] .wt-case b { color: var(--ink); font-weight: 650; }
+
+/* ---- stage ---- */
+[data-widget="w-traitor"] .wt-stage { position: relative; flex: none; height: 336px; }
+[data-widget="w-traitor"] .is-narrow .wt-stage { height: 306px; }
+[data-widget="w-traitor"] .wt-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+[data-widget="w-traitor"] .wt-road { stroke: var(--ink-4); stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; }
+[data-widget="w-traitor"] .wt-road.is-lie { stroke: var(--wt-lie); opacity: .75; }
+[data-widget="w-traitor"] .wt-rider-bg { fill: var(--surface); stroke-width: 2; }
+[data-widget="w-traitor"] .wt-rider.v-a .wt-rider-bg { stroke: var(--c2); }
+[data-widget="w-traitor"] .wt-rider.v-r .wt-rider-bg { stroke: var(--c1); }
+[data-widget="w-traitor"] .wt-rider.is-lie .wt-rider-bg { fill: var(--wt-lie-soft); filter: drop-shadow(0 0 5px var(--wt-lie)); }
+[data-widget="w-traitor"] .wt-rider-ic { color: var(--ink); }
+
+/* camps */
+[data-widget="w-traitor"] .wt-camp {
+  position: absolute; z-index: 2; display: grid; place-items: center; padding: 0; border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, var(--surface-2), var(--surface)); border: 2px solid var(--ink-3);
+  box-shadow: 0 0 18px -6px color-mix(in srgb, var(--c4) 70%, transparent); cursor: default;
+  transition: border-color var(--dur-2), box-shadow var(--dur-2), transform var(--dur-2) var(--ease-out);
+}
+[data-widget="w-traitor"] .wt-camp:disabled { opacity: 1; }
+[data-widget="w-traitor"] .wt[data-tab="2"] .wt-camp:not(.is-traitor) { cursor: pointer; border-style: dashed; }
+[data-widget="w-traitor"] .wt[data-tab="2"] .wt-camp:not(.is-traitor):hover { transform: scale(1.06); border-color: var(--wt-lie); }
+[data-widget="w-traitor"] .wt-mono { font: 700 15px/1 var(--font-mono); color: var(--ink); grid-area: 1 / 1; }
+[data-widget="w-traitor"] .is-narrow .wt-mono { font-size: 13px; }
+[data-widget="w-traitor"] .wt-mask { grid-area: 1 / 1; width: 70%; height: 70%; color: var(--wt-lie); opacity: 0; transform: scale(.3) rotate(-20deg);
+  transition: opacity var(--dur-2), transform 420ms cubic-bezier(.3, 1.6, .5, 1); }
+[data-widget="w-traitor"] .wt-camp.is-traitor { border-color: var(--wt-lie); background: radial-gradient(circle at 50% 35%, var(--wt-lie-soft), var(--surface));
+  box-shadow: 0 0 0 4px var(--wt-lie-soft), 0 0 26px -2px var(--wt-lie); }
+[data-widget="w-traitor"] .wt-camp.is-traitor .wt-mask { opacity: 1; transform: none; }
+[data-widget="w-traitor"] .wt-camp.is-traitor .wt-mono { opacity: 0; }
+[data-widget="w-traitor"] .wt-pill {
+  position: absolute; left: 50%; top: 100%; transform: translate(-50%, -45%) scale(.6); opacity: 0;
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px 1px 4px; border-radius: 999px; white-space: nowrap;
+  background: var(--wt-lie); color: var(--bg); font: 800 11px/14px var(--font-mono); letter-spacing: .06em;
+  transition: opacity var(--dur-2), transform 420ms cubic-bezier(.3, 1.6, .5, 1);
+}
+[data-widget="w-traitor"] .wt-pill-ic { width: 13px; height: 13px; }
+[data-widget="w-traitor"] .wt-camp.is-traitor .wt-pill { opacity: 1; transform: translate(-50%, -45%); }
+[data-widget="w-traitor"] .wt-name { position: absolute; z-index: 1; white-space: nowrap; font: 650 13px/16px var(--font-sans); color: var(--ink); pointer-events: none;
+  text-shadow: 0 0 4px var(--surface), 0 0 8px var(--surface); }
+[data-widget="w-traitor"] .wt-name.is-traitor { color: var(--wt-lie); }
+[data-widget="w-traitor"] .is-narrow .wt-name { display: none; }
+[data-widget="w-traitor"] .is-narrow .wt-name-C { display: block; font-size: 12px; }
+
+/* the loyal commander's order */
+[data-widget="w-traitor"] .wt-order {
+  position: absolute; z-index: 2; height: 44px; display: inline-flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 1px;
+  padding: 0 10px; border-radius: var(--radius-2); border: 1px solid var(--line); background: var(--bg); text-align: left; cursor: default;
+  transition: opacity var(--dur-2), border-color var(--dur-2);
+}
+[data-widget="w-traitor"] .wt:not(.is-narrow) .wt-order { flex-direction: row; align-items: center; gap: 8px; }
+[data-widget="w-traitor"] .wt-order:disabled { opacity: 1; }
+[data-widget="w-traitor"] .wt-order.is-hidden { visibility: hidden; opacity: 0; }
+[data-widget="w-traitor"] .wt-order.is-live { cursor: pointer; border-color: var(--ink-3); border-style: dashed; padding-right: 24px; }
+[data-widget="w-traitor"] .wt-order.is-live:hover { border-color: var(--ink); }
+
+/* ballot columns */
+[data-widget="w-traitor"] .wt-col { position: absolute; z-index: 1; display: flex; flex-direction: column; gap: 6px; border-radius: var(--radius-2);
+  transition: opacity var(--dur-2), box-shadow var(--dur-2); }
+[data-widget="w-traitor"] .wt-col.is-dim { opacity: .45; }
+[data-widget="w-traitor"] .wt-col.is-focus { box-shadow: 0 0 0 2px var(--accent), 0 0 24px -6px var(--accent); }
+[data-widget="w-traitor"] .wt-ballot { display: flex; flex-direction: column; gap: 6px; }
+[data-widget="w-traitor"] .is-narrow .wt-ballot { gap: 4px; }
+[data-widget="w-traitor"] .wt-chip {
+  position: relative; height: 36px; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  padding: 0 10px; border-radius: var(--radius-2); border: 1.5px solid var(--line); background: var(--bg); text-align: left; cursor: default;
+  transition: border-color var(--dur-2), background var(--dur-2);
+}
+[data-widget="w-traitor"] .is-narrow .wt-chip { height: var(--tap); flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; padding: 0 6px; }
+[data-widget="w-traitor"] .wt-chip:disabled { opacity: 1; }
+[data-widget="w-traitor"] .wt-chip.v-a:not(.is-empty) { border-color: color-mix(in srgb, var(--c2) 55%, var(--line)); background: var(--c2-soft); }
+[data-widget="w-traitor"] .wt-chip.v-r:not(.is-empty) { border-color: color-mix(in srgb, var(--c1) 55%, var(--line)); background: var(--c1-soft); }
+[data-widget="w-traitor"] .wt-chip.is-lie { border-style: dashed; border-color: var(--wt-lie); }
+[data-widget="w-traitor"] .wt-chip.is-live { cursor: pointer; padding-right: 26px; box-shadow: 0 0 14px -6px var(--wt-lie); }
+[data-widget="w-traitor"] .is-narrow .wt-chip.is-live { padding-right: 18px; }
+[data-widget="w-traitor"] .wt-chip.is-live:hover { background: var(--wt-lie-soft); }
+[data-widget="w-traitor"] .wt-src { display: inline-flex; align-items: center; gap: 3px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 500 12px/14px var(--font-sans); color: var(--ink-3); }
+[data-widget="w-traitor"] .is-narrow .wt-src { font-size: 11px; line-height: 13px; max-width: 100%; }
+[data-widget="w-traitor"] .wt-chip.is-lie .wt-src { color: var(--wt-lie); }
+[data-widget="w-traitor"] .wt-src-ic { width: 14px; height: 14px; flex: none; color: var(--wt-lie); }
+[data-widget="w-traitor"] .wt-val { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font: 700 13px/16px var(--font-sans); letter-spacing: .02em; }
+[data-widget="w-traitor"] .is-narrow .wt-val { font-size: 12px; }
+[data-widget="w-traitor"] .is-narrow .wt-val .wt-ic { width: 14px; height: 14px; }
+[data-widget="w-traitor"] .v-a .wt-val .wt-ic, [data-widget="w-traitor"] .wt-val.v-a .wt-ic { color: var(--c2); }
+[data-widget="w-traitor"] .v-r .wt-val .wt-ic, [data-widget="w-traitor"] .wt-val.v-r .wt-ic { color: var(--c1); }
+[data-widget="w-traitor"] .wt-dots { color: var(--ink-4); letter-spacing: .2em; }
+[data-widget="w-traitor"] .wt-flipi { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font: 700 13px/1 var(--font-sans); color: var(--wt-lie); }
+[data-widget="w-traitor"] .is-narrow .wt-flipi { right: 5px; font-size: 12px; }
+[data-widget="w-traitor"] .wt-order .wt-flipi { color: var(--ink-2); }
+
+[data-widget="w-traitor"] .wt-dec { min-height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 2px; font: 600 13px/18px var(--font-sans); color: var(--ink-2); }
+[data-widget="w-traitor"] .is-narrow .wt-dec { min-height: 22px; gap: 3px; font-size: 12px; }
+[data-widget="w-traitor"] .wt-dec b { display: inline-flex; }
+[data-widget="w-traitor"] .wt-dec .wt-val { font-size: 15px; font-weight: 800; color: var(--ink); }
+[data-widget="w-traitor"] .is-narrow .wt-dec .wt-val { font-size: 12px; }
+[data-widget="w-traitor"] .wt-dec-arrow { color: var(--ink-3); font-size: 12px; font-weight: 500; }
+[data-widget="w-traitor"] .wt-tally { font: 600 12px/1 var(--font-mono); color: var(--ink-3); padding: 2px 5px; border: 1px solid var(--line); border-radius: 999px; }
+[data-widget="w-traitor"] .is-narrow .wt-tally { font-size: 11px; padding: 1px 3px; }
+[data-widget="w-traitor"] .wt-dec-wait { color: var(--ink-4); font-style: italic; }
+
+/* traitor's column: his own ballot doesn't count */
+[data-widget="w-traitor"] .wt-tcard { display: none; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px;
+  text-align: center; border: 1.5px dashed var(--wt-lie); border-radius: var(--radius-2); background: var(--wt-lie-soft); }
+[data-widget="w-traitor"] .wt-col.is-traitor .wt-ballot, [data-widget="w-traitor"] .wt-col.is-traitor .wt-dec { display: none; }
+[data-widget="w-traitor"] .wt-col.is-traitor .wt-tcard { display: flex; }
+[data-widget="w-traitor"] .wt-tcard-ic { width: 34px; height: 34px; color: var(--wt-lie); }
+[data-widget="w-traitor"] .wt-tcard-h { font: 800 12px/14px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--wt-lie); }
+[data-widget="w-traitor"] .wt-tcard-t { font: 500 12px/16px var(--font-sans); color: var(--ink-2); }
+[data-widget="w-traitor"] .wt-tcard-hint { display: none; font: 500 12px/16px var(--font-sans); color: var(--ink); }
+[data-widget="w-traitor"] .wt[data-tab="2"] .wt-tcard-hint { display: block; }
+[data-widget="w-traitor"] .is-narrow .wt-tcard { padding: 6px 4px; }
+[data-widget="w-traitor"] .is-narrow .wt-tcard-t, [data-widget="w-traitor"] .is-narrow .wt-tcard-hint { font-size: 11px; line-height: 14px; }
+
+/* ---- footer: goals, counter, reset, replay ---- */
+[data-widget="w-traitor"] .wt-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); height: 44px; }
+[data-widget="w-traitor"] .is-narrow .wt-foot { flex-direction: column; align-items: stretch; gap: 6px; height: 86px; }
+[data-widget="w-traitor"] .wt-goals { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+[data-widget="w-traitor"] .wt-goal { display: flex; align-items: center; gap: 6px; font: 13px/18px var(--font-sans); color: var(--ink-2); white-space: nowrap; }
+[data-widget="w-traitor"] .wt-goal b { color: var(--ink); font-weight: 650; }
+[data-widget="w-traitor"] .wt-gmark { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; }
+[data-widget="w-traitor"] .wt-gic { width: 14px; height: 14px; }
+[data-widget="w-traitor"] .wt-goal.is-ok .wt-gmark { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good); }
+[data-widget="w-traitor"] .wt-goal.is-ok b { color: var(--good); }
+[data-widget="w-traitor"] .wt-goal.is-bad .wt-gmark { background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--bad); }
+[data-widget="w-traitor"] .wt-goal.is-bad b { color: var(--bad); }
+[data-widget="w-traitor"] .wt-goal.is-na { color: var(--ink-3); }
+[data-widget="w-traitor"] .wt-goal.is-na b { color: var(--ink-3); }
+[data-widget="w-traitor"] .wt-gdash, [data-widget="w-traitor"] .wt-gdot { color: var(--ink-3); font-weight: 700; }
+[data-widget="w-traitor"] .wt-ctl { display: flex; align-items: center; gap: var(--sp-1); flex: none; }
+[data-widget="w-traitor"] .is-narrow .wt-ctl { justify-content: space-between; gap: 6px; height: var(--tap); }
+[data-widget="w-traitor"] .wt-count { font: 500 12px/16px var(--font-sans); color: var(--ink-2); white-space: nowrap; margin-right: auto; }
+[data-widget="w-traitor"] .wt-count b { color: var(--ink); font-variant-numeric: tabular-nums; }
+[data-widget="w-traitor"] .wt-count .wt-splits { color: var(--good); }
+[data-widget="w-traitor"] .wt-count.is-all { color: var(--good); }
+[data-widget="w-traitor"] .wt-count.is-all b { color: var(--good); }
+[data-widget="w-traitor"] .wt-btn { min-height: var(--tap); min-width: var(--tap); padding: 0 12px; border-radius: var(--radius-2); border: 1px solid var(--line);
+  background: var(--bg); color: var(--ink-2); font: 600 13px/1 var(--font-sans); cursor: pointer; }
+[data-widget="w-traitor"] .wt-btn:hover { color: var(--ink); border-color: var(--ink-4); }
+[data-widget="w-traitor"] .wt-replay { font: 600 var(--fs-caption)/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+[data-widget="w-traitor"] .is-narrow .wt-btn { padding: 0 8px; font-size: 12px; }
+[data-widget="w-traitor"] .wt:not([data-tab="2"]) .wt-count,
+[data-widget="w-traitor"] .wt:not([data-tab="2"]) .wt-reset { visibility: hidden; }
+
+/* ---- motion ---- */
+[data-widget="w-traitor"] .wt-flash { animation: wt-flash 720ms var(--ease-out); }
+@keyframes wt-flash {
+  0% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(1.06); filter: brightness(1.6); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-widget="w-traitor"] .wt-flash { animation: none; }
+  [data-widget="w-traitor"] .wt-mask, [data-widget="w-traitor"] .wt-pill, [data-widget="w-traitor"] .wt-camp { transition: none; }
+}
+
+/* narrow tweaks: decision line and flip glyph must fit a ≈96px column */
+[data-widget="w-traitor"] .is-narrow .wt-dec { justify-content: center; white-space: nowrap; padding: 0; }
+[data-widget="w-traitor"] .is-narrow .wt-dec-arrow { display: none; }
+[data-widget="w-traitor"] .is-narrow .wt-dec .wt-val { gap: 2px; letter-spacing: 0; }
+[data-widget="w-traitor"] .is-narrow .wt-dec .wt-val .wt-ic { width: 13px; height: 13px; }
+[data-widget="w-traitor"] .is-narrow .wt-tally { border: 0; padding: 0; }
+[data-widget="w-traitor"] .is-narrow .wt-chip .wt-flipi { top: 12px; }
+[data-widget="w-traitor"] .is-narrow .wt-count { font-size: 12px; }
+/* the TRAITOR pill hangs under the camp: push a name that sits below it out of the way */
+[data-widget="w-traitor"] .wt-name.is-below.is-traitor { margin-top: 10px; }
+/* mid widths (≈ 640–800px): the dashed purple border and ⇄ mark the traitor's chips; drop the inline mask so the text fits */
+[data-widget="w-traitor"] .is-tight .wt-src-ic { display: none; }
+[data-widget="w-traitor"] .is-tight .wt-chip { padding-left: 8px; gap: 4px; }
+[data-widget="w-traitor"] .is-tight .wt-chip.is-live { padding-right: 22px; }
+[data-widget="w-traitor"] .is-tight .wt-flipi { right: 6px; }

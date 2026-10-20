@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مسئله‌ی ژنرال‌های بیزانسی</title>
+<meta name="description" content="سه ژنرال، یک شهر، و پیک‌هایی که شاید هرگز نرسند: چرا کامپیوترها نمی‌توانند به‌سادگی با هم توافق کنند. یک روایت تعاملی پنج‌دقیقه‌ای.">
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/components.css">
+<link rel="stylesheet" href="assets/page.css">
+<link rel="stylesheet" href="widgets/w-two-worlds/index.css">
+<link rel="stylesheet" href="widgets/w-traitor/index.css">
+<link rel="stylesheet" href="assets/fa.css">
+</head>
+<body class="d-body">
+
+<!-- Icon sprite. Widgets may reuse these with <svg><use href="#i-mask"/></svg>. -->
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-attack" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4h-3.5L7.5 13l3.5 3.5L20 7.5z"/><path d="M5 12.5l6.5 6.5"/><path d="M8 16l-4 4"/></g></symbol>
+  <symbol id="i-retreat" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></g></symbol>
+  <symbol id="i-mask" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M2 9.5C2 7.4 4.2 6 7.2 6c2 0 3.2.9 4.8.9s2.8-.9 4.8-.9c3 0 5.2 1.4 5.2 3.5 0 4-2.6 7-5.6 7-2 0-3-1.8-4.4-1.8S9.6 16.5 7.6 16.5C4.6 16.5 2 13.5 2 9.5zm4.2 1.1c.3 1.1 1.4 1.8 2.6 1.5.7-.2 1.1-.8 1-1.5-.3-1-1.6-1.6-2.7-1.4-.7.2-1.1.7-.9 1.4zm11.6 0c-.3 1.1-1.4 1.8-2.6 1.5-.7-.2-1.1-.8-1-1.5.3-1 1.6-1.6 2.7-1.4.7.2 1.1.7.9 1.4z"/></symbol>
+  <symbol id="i-rider" viewBox="0 0 24 24"><path fill="currentColor" d="M3.2 16.6l2.6-4.4c.3-.5.8-.8 1.4-.8h6.3l2.6-3.5 1.3-2.2 1 1.3 2.4.8.4 1.7-2.1.4-1.1 3.3-.6 5.8h-1.3l-.2-4.4H8.6l-.9 4.4H6.4l.2-4.3-2.2 2.4z"/><circle fill="currentColor" cx="11" cy="5.4" r="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M11 7.4v3.4M9.2 8.8l3.6-.6"/></symbol>
+  <symbol id="i-rider-x" viewBox="0 0 24 24"><use href="#i-rider"/><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M16.5 1.5l5 5M21.5 1.5l-5 5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-q" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path fill="none" stroke="var(--bg)" stroke-width="2.4" stroke-linecap="round" d="M9.3 9.3a2.8 2.8 0 1 1 3.9 2.6c-.8.4-1.2 1-1.2 1.8v.4"/><circle cx="12" cy="17.3" r="1.4" fill="var(--bg)"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-tent" viewBox="0 0 32 32"><path fill="currentColor" d="M16 5l12 21H4z" opacity=".9"/><path fill="var(--bg)" d="M16 13l-4.2 13h8.4z"/><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M16 5V1.5"/></symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="7.2" stroke-width="2.6" stroke-dasharray="2.2 1.6"/><circle cx="12" cy="10" r="4" stroke-width="1.6"/><path stroke-width="2" d="M8.5 16.5L7 22l3-1.5M15.5 16.5L17 22l-3-1.5"/></g></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8.5"/><path d="M12 8.5V13l3 2"/><path d="M9.5 2.5h5M12 2.5v2"/></g></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.8 6.8L12 13l8.2-6.2"/></g></symbol>
+  <symbol id="i-odds" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><g fill="currentColor"><circle cx="8.3" cy="8.3" r="1.6"/><circle cx="15.7" cy="8.3" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="8.3" cy="15.7" r="1.6"/><circle cx="15.7" cy="15.7" r="1.6"/></g></symbol>
+</svg>
+
+<nav class="pbar" aria-label="کجای داستانی">
+  <a href="#puzzle-1" data-pbar="puzzle-1"><span class="pbar-label">معمای ۱</span><span class="pbar-track"><span class="pbar-fill"></span></span></a>
+  <a href="#puzzle-2" data-pbar="puzzle-2"><span class="pbar-label">معمای ۲</span><span class="pbar-track"><span class="pbar-fill"></span></span></a>
+  <a href="#way-out" data-pbar="way-out"><span class="pbar-label">راه خروج</span><span class="pbar-track"><span class="pbar-fill"></span></span></a>
+</nav>
+
+<!-- s-01 · Three camps, one city -->
+<header class="hero night" id="top">
+  <div class="hero-inner">
+    <div class="d-kicker">علوم کامپیوتر، به زبان ساده</div>
+    <h1>مسئله‌ی ژنرال‌های بیزانسی</h1>
+    <p class="d-standfirst">سه سپاه یک شهر را محاصره کرده‌اند. اگر همه با هم حمله کنند، پیروز می‌شوند؛ اگر همه با هم عقب بنشینند، زنده می‌مانند. اگر از هم جدا شوند، آن‌هایی که حمله کرده‌اند نابود می‌شوند. تنها راه حرف‌زدنشان فرستادن پیک از دل خطوط دشمن است.</p>
+    <div class="d-meta">
+      <div><b>مطالعه</b>۹ دقیقه</div>
+      <div><b>برای</b>هر آدم کنجکاوی؛ بی‌نیاز از پیش‌زمینه</div>
+      <div><b>روش</b>اسکرول کن و هرجا گفت، بزن</div>
+    </div>
+
+    <figure class="hero-fig" id="hero-fig" data-anim-scope>
+      <div class="hero-map" data-anim="once" role="img" aria-label="نقشه‌ی شب: شهری با دیوار که سه اردوگاه دورش را گرفته‌اند؛ ژنرال A، ژنرال B و ژنرال C، با پیک‌هایی در جاده‌های میان آن‌ها. پیک A به B در راه اسیر می‌شود و پرچم ژنرال C به نقاب بدل می‌شود: شاید خائن باشد.">
+        <svg class="d-svg hero-svg only-wide" viewBox="0 0 640 400" aria-hidden="true" data-layout="wide"></svg>
+        <svg class="d-svg hero-svg only-narrow" viewBox="0 0 328 360" aria-hidden="true" data-layout="narrow"></svg>
+      </div>
+      <div class="hero-replay"><button class="d-replay" data-replay type="button">پخش دوباره‌ی محاصره</button></div>
+    </figure>
+
+    <div class="split" role="list" aria-label="دو مسئله‌ای که در دل داستان است">
+      <div class="split-card" role="listitem" data-split="1">
+        <svg class="split-icon" aria-hidden="true"><use href="#i-rider-x"/></svg>
+        <div>
+          <p class="split-kicker">معمای ۱ · پیک گمشده</p>
+          <p class="split-text">همه صادق‌اند. پیک‌ها ممکن است ناپدید شوند.</p>
+        </div>
+      </div>
+      <div class="split-card" role="listitem" data-split="2">
+        <svg class="split-icon" aria-hidden="true"><use href="#i-mask"/></svg>
+        <div>
+          <p class="split-kicker">معمای ۲ · دروغ‌گو</p>
+          <p class="split-text">همه‌ی پیک‌ها می‌رسند. یک نفر دروغ می‌گوید.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="d-page">
+<main class="d-main" id="main">
+
+  <section id="s-01" class="intro">
+    <p class="lede">آیا ژنرال‌های وفادار اصلاً می‌توانند <em>مطمئن</em> باشند که یک‌دست عمل خواهند کرد؟ داستان بالا دو مسئله‌ی متفاوت را در خود پنهان کرده است و دانشمندان علوم کامپیوتر آن‌ها را جدا از هم مطالعه می‌کنند. در اولی، که «مسئله‌ی دو ژنرال» نام دارد، همه صادق‌اند اما پیک‌ها ممکن است ناپدید شوند. در دومی، همه‌ی پیک‌ها می‌رسند اما یک نفر دروغ می‌گوید؛ و این خودِ مسئله‌ی ژنرال‌های بیزانسی است. پاسخ هر دو شگفت‌انگیز است. یکی‌یکی سراغشان می‌رویم؛ اما اول، قوانین بازی.</p>
+
+    <aside class="rules-card" id="rules" aria-labelledby="rules-h">
+      <p class="rules-card-h" id="rules-h">قوانین بازی</p>
+      <ul class="rules-list">
+        <li><svg aria-hidden="true"><use href="#i-tent"/></svg><p>ژنرال‌ها در اردوگاه‌های جدا از هم‌اند. نمی‌توانند همدیگر را ببینند، با هم دیدار کنند یا به هم علامت بدهند.</p></li>
+        <li><svg aria-hidden="true"><use href="#i-rider"/></svg><p><b>تنها راه ارتباط، فرستادن پیک سوار بر اسب است.</b></p></li>
+        <li class="rules-p1"><svg aria-hidden="true"><use href="#i-rider-x"/></svg><p><span class="rules-tag">معمای ۱</span>پیک ممکن است در راه اسیر شود و ژنرالی که او را فرستاده هیچ‌وقت نفهمد. <span class="rules-note">معمای ۲ این قانون را عوض می‌کند.</span></p></li>
+      </ul>
+    </aside>
+  </section>
+
+  <!-- s-02 · Puzzle 1 -->
+  <section id="puzzle-1" data-seg="s-02">
+    <p class="sec-kicker"><svg aria-hidden="true"><use href="#i-rider-x"/></svg>معمای ۱ · پیک گمشده</p>
+    <h2>«رسید.» «تأییدت رسید.» ...</h2>
+    <p>با فقط دو ژنرال شروع می‌کنیم، A و B، هر دو کاملاً صادق. A می‌خواهد هنگام سپیده‌دم حمله کند، اما فقط اگر B هم حمله کند. تنها خطر، دره‌ی میان دو اردوگاه است: پیکی که از آن می‌گذرد ممکن است اسیر شود و ژنرالش هیچ‌وقت نفهمد.</p>
+
+    <div class="d-check" data-check="k-01" data-correct="c" data-kind="predict">
+      <div class="d-check-kind">پیش‌بینی</div>
+      <p class="d-check-prompt">ژنرال A می‌فرستد: «حمله هنگام سپیده‌دم.» ژنرال B جواب می‌دهد: «رسید.» اتفاقاً هر دو پیک به مقصد می‌رسند، اما هر ژنرال فقط از پیکی خبر دارد که به <em>خودش</em> رسیده است. حالا آیا هر کدام می‌تواند <em>مطمئن</em> باشد که دیگری حمله خواهد کرد؟</p>
+      <div class="d-options" role="group" aria-label="پیش‌بینی تو">
+        <button type="button" class="d-option" data-opt="a" aria-pressed="false">(a) بله: B فرمان را گرفته و A هم تأیید B را گرفته است.</button>
+        <button type="button" class="d-option" data-opt="b" aria-pressed="false">(b) هنوز نه، ولی یک تأیید دیگر از A ماجرا را تمام می‌کند.</button>
+        <button type="button" class="d-option" data-opt="c" aria-pressed="false">(c) نه، و هیچ تعداد تأییدی هرگز ماجرا را تمام نمی‌کند.</button>
+      </div>
+      <div class="d-feedback" aria-live="polite"></div>
+      <template class="fb"><p>(c) درست است و بیشتر آدم‌ها را شگفت‌زده می‌کند. B آخرین پیک را فرستاده، پس نمی‌تواند بداند «رسید» به مقصد رسیده یا نه. اگر اسیر شده بود، A هنوز داشت فکر می‌کرد که آیا B اصلاً فرمان را گرفته یا نه و شاید دست نگه می‌داشت. پس B نمی‌تواند مطمئن باشد که A حمله می‌کند.</p><p>درباره‌ی (a): تأیید به دست A رسید، اما B نمی‌تواند این را بداند و ژنرالی که مطمئن نیست شریکش حمله می‌کند، شاید دست نگه دارد. پس A هم نمی‌تواند کاملاً روی B حساب کند. درباره‌ی (b): آن تأیید اضافه هم ممکن است اسیر شود و آن‌وقت A در تردید می‌ماند. هر کس آخرین پیک را بفرستد، همیشه نامطمئن است. اسکرول کن تا اتفاقش را ببینی.</p></template>
+    </div>
+
+    <div class="d-scrolly scrolly-wide is-locked" data-scrolly="handshake" data-gate="k-01">
+      <div class="d-scrolly-canvas night canvas-card">
+        <div class="hs" id="w-handshake" data-step="0" role="group" aria-label="دو اردوگاه، A و B، که از روی دره پیک رد و بدل می‌کنند">
+          <div class="hs-top">
+            <span class="hs-count">پیک‌های فرستاده‌شده: <b data-hs="n">۰</b></span>
+          </div>
+          <div class="hs-stage">
+            <svg class="hs-valley" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M0 40 L0 26 Q25 18 50 30 T100 24 L100 40 Z" class="hs-hill"/>
+              <path d="M0 40 L0 32 Q30 26 55 35 T100 31 L100 40 Z" class="hs-hill2"/>
+            </svg>
+            <div class="hs-path" aria-hidden="true"></div>
+            <div class="hs-chip" data-hs="chip" aria-hidden="true"><span class="hs-chip-n"></span><svg class="hs-chip-ic"><use href="#i-msg"/></svg><span class="hs-chip-t"></span></div>
+            <div class="hs-camp hs-a" aria-hidden="true"><svg><use href="#i-tent"/></svg><span>ژنرال A</span></div>
+            <div class="hs-camp hs-b" aria-hidden="true"><svg><use href="#i-tent"/></svg><span>ژنرال B</span></div>
+            <div class="hs-rider" data-hs="rider" aria-hidden="true"><svg><use href="#i-rider"/></svg></div>
+            <div class="hs-fan" data-hs="fan" aria-hidden="true"></div>
+          </div>
+          <div class="hs-badges">
+            <div class="hs-badge" data-camp="A"></div>
+            <div class="hs-badge" data-camp="B"></div>
+          </div>
+          <div class="hs-controls">
+            <button type="button" class="d-btn primary hs-send" data-hs="send">یک پیک دیگر بفرست</button>
+            <button type="button" class="hs-reset" data-hs="reset">از اول</button>
+          </div>
+          <p class="hs-line" data-hs="line"></p>
+          <p class="sr-only" aria-live="polite" data-hs="live"></p>
+        </div>
+      </div>
+      <div class="d-scrolly-steps">
+        <p class="lock-note">برای شروع، به سؤال بالا جواب بده.</p>
+        <div class="d-step"><p>پیک A می‌رسد، پس B از نقشه خبر دارد. اما A هیچ راهی ندارد که این را بداند. از نظر او، پیکش شاید ته یک دره افتاده باشد.</p></div>
+        <div class="d-step"><p>پس B پیکی برمی‌گرداند با پیام «رسید». وقتی می‌رسد، A خیالش راحت می‌شود. حالا B است که فکر می‌کند آیا پیک <em>او</em> رسیده یا نه. اگر نرسیده باشد، A شاید دست نگه دارد و B تنها حمله کند.</p></div>
+        <div class="d-step"><p>پس A پیکی می‌فرستد تا تأیید را تأیید کند. حالا B خیالش راحت می‌شود و A در تردید می‌ماند. الگو را می‌بینی؟</p></div>
+        <div class="d-step"><p><strong>نوبت توست.</strong> هر چقدر می‌خواهی روی <em>یک پیک دیگر بفرست</em> بزن. می‌توانی پیکی را پیدا کنی که تردید را تمام کند؟</p></div>
+        <div class="d-step"><p>چنین پیکی وجود ندارد. هر کس آخرین پیک را بفرستد هیچ‌وقت نمی‌تواند بداند که رسیده است؛ پس قطعیت، زنجیره‌ای بی‌پایان از تأییدها می‌خواهد. این نخستین مسئله در ارتباطات کامپیوتری بود که حل‌ناشدنی بودنش ثابت شد.</p><p>شبکه‌های واقعی، از جمله پروتکل TCP اینترنت، آن را حل نمی‌کنند. با آن زندگی می‌کنند و تردید را کوچک می‌کنند؛ چیزی شبیه فرستادن صد پیک: شکست خیلی بعید می‌شود، ولی هیچ‌وقت ناممکن نمی‌شود.</p></div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- s-03 · Puzzle 2 -->
+  <section id="puzzle-2" data-seg="s-03">
+    <p class="sec-kicker"><svg aria-hidden="true"><use href="#i-mask"/></svg>معمای ۲ · دروغ‌گو</p>
+    <h2>دروغ‌گویی در میان صف‌ها</h2>
+    <p>حالا خطر را برعکس می‌کنیم. برگشته‌ایم به سه ژنرال، اما این بار جاده‌ها امن‌اند.</p>
+
+    <div class="d-scrolly scrolly-wide" data-scrolly="roles">
+      <div class="d-scrolly-canvas night canvas-card">
+        <figure class="roles" id="f-roles" data-step="0">
+          <svg class="d-svg roles-svg" role="img" aria-label="مثلث اردوگاه‌ها: فرمانده در بالا، ستوان ۱ پایین چپ، ستوان ۲ پایین راست."></svg>
+          <div class="goals" data-goals>
+            <p class="goal" data-goal="1"><span class="goal-tick" aria-hidden="true"></span><b>هدف ۱</b> همه‌ی ژنرال‌های وفادار یک کار می‌کنند.<span class="sr-only goal-sr"></span></p>
+            <p class="goal" data-goal="2"><span class="goal-tick" aria-hidden="true"></span><b>هدف ۲</b> اگر فرمانده وفادار باشد، از فرمانش پیروی می‌کنند.<span class="sr-only goal-sr"></span></p>
+            <p class="goals-note">بدون هدف ۲، «همیشه عقب‌نشینی» یک برد ارزان بود.</p>
+          </div>
+          <p class="sr-only" aria-live="polite" data-roles-live></p>
+        </figure>
+      </div>
+      <div class="d-scrolly-steps">
+        <div class="d-step rules-step">
+          <p class="rules-card-h"><a href="#rules">قوانین</a>: در معمای ۲ چه چیزی عوض می‌شود</p>
+          <ul class="rules-list">
+            <li class="is-old"><svg aria-hidden="true"><use href="#i-rider-x"/></svg><p><s>پیک ممکن است در راه اسیر شود.</s><span class="sr-only"> (دیگر درست نیست.)</span></p></li>
+            <li><svg aria-hidden="true"><use href="#i-rider"/></svg><p>همه‌ی پیک‌ها می‌رسند و پیام را دقیقاً همان‌طور که به آن‌ها داده شده می‌رسانند.</p></li>
+            <li><svg aria-hidden="true"><use href="#i-tent"/></svg><p>ژنرالی که پیامی می‌گیرد همیشه می‌داند کدام اردوگاه آن را فرستاده است.</p></li>
+            <li><svg aria-hidden="true"><use href="#i-clock"/></svg><p>هر ژنرال می‌داند پیام کِی باید برسد. اگر پیامی که منتظرش است تا آن زمان نرسیده باشد، می‌داند که دیگر نمی‌آید. <span class="later">آن مهلت، در پایان داستان برمی‌گردد.</span></p></li>
+          </ul>
+          <p>پیک‌ها هنوز تنها راه ارتباط‌اند. خطر حالا ژنرالی است که دروغ می‌گوید.</p>
+        </div>
+        <div class="d-step"><p>یکی از ژنرال‌ها <strong>فرمانده</strong> است. او تصمیم می‌گیرد و فرمانش را با پیک برای دو نفر دیگر، یعنی <strong>ستوان‌هایش</strong>، می‌فرستد.</p></div>
+        <div class="d-step"><p>برای مطمئن شدن، هر ستوان برای دیگری پیکی می‌فرستد و می‌گوید چه فرمانی گرفته است. وقتی هیچ‌کس دروغ نمی‌گوید، هر دو حمله می‌کنند و هر دو هدف روی کارت برآورده می‌شود.</p></div>
+      </div>
+    </div>
+
+    <div class="d-check" data-check="k-02" data-correct="c" data-kind="predict">
+      <div class="d-check-kind">پیش‌بینی</div>
+      <p class="d-check-prompt">حالا همه‌ی پیک‌ها می‌رسند، اما یکی از سه ژنرال شاید خائنی باشد که دروغ می‌گوید. دو ژنرال وفادار می‌توانند هر چقدر می‌خواهند برای هم پیک بفرستند. آیا همیشه می‌توانند در پایان یک کار بکنند؟</p>
+      <div class="d-options" role="group" aria-label="پیش‌بینی تو">
+        <button type="button" class="d-option" data-opt="a" aria-pressed="false">(a) بله: دو ژنرال وفادار یک خائن را با رأی شکست می‌دهند.</button>
+        <button type="button" class="d-option" data-opt="b" aria-pressed="false">(b) بله، تا وقتی خائن فرمانده نباشد.</button>
+        <button type="button" class="d-option" data-opt="c" aria-pressed="false">(c) نه: خائن همیشه می‌تواند یک ژنرال وفادار را در موقعیتی بگذارد که نتواند بفهمد چه کسی دروغ می‌گوید.</button>
+      </div>
+      <div class="d-feedback" aria-live="polite"></div>
+      <template class="fb"><p>(c). این تقریباً همه را شگفت‌زده می‌کند؛ مقاله‌ی سال ۱۹۸۲ که این مسئله را نام‌گذاری کرد، آن را «به‌طرز فریبنده‌ای ساده» می‌خواند و نتیجه‌اش را شگفت‌انگیز می‌داند. دو در برابر یک فقط وقتی جواب می‌دهد که بدانی آن یک نفر کیست، و همان‌طور که بخش بعد نشان می‌دهد، یک ژنرال وفادار نمی‌تواند بداند. درباره‌ی (b): ژنرال‌های وفادار نمی‌دانند خائن کیست، پس نقشه‌شان باید هر که خائن باشد جواب بدهد، از جمله فرمانده.</p></template>
+    </div>
+  </section>
+
+  <!-- s-04 · Through Lieutenant 1's eyes -->
+  <section id="s-04" data-seg="s-04">
+    <h2>از چشم ستوان ۱</h2>
+    <p>این‌جا می‌بینی یک خائن چطور دو ژنرال وفادار را شکست می‌دهد. خودت را بگذار جای یکی از ستوان‌ها.</p>
+
+    <div class="d-scrolly scrolly-wide is-locked" data-scrolly="two-worlds" data-gate="k-02">
+      <div class="d-scrolly-canvas night canvas-card">
+        <div data-widget="w-two-worlds" class="mount mount-two-worlds" data-step="0" aria-label="صندوق ستوان ۱ و دو دنیایی که می‌توانستند آن را بسازند"></div>
+      </div>
+      <div class="d-scrolly-steps">
+        <p class="lock-note">برای شروع، به سؤال بالا جواب بده.</p>
+        <div class="d-step"><p>تو ستوان ۱ هستی. نوار بالای صحنه همه‌ی پیام‌هایی را نشان می‌دهد که به دستت رسیده، و آن دو با هم موافق نیستند. یکی از دو ژنرال دیگر دارد دروغ می‌گوید. کدام‌یک؟</p></div>
+        <div class="d-step"><p>شاید ستوان ۲ خائن باشد. آن‌وقت فرمانده وفادار است و هدف ۲ می‌گوید باید از فرمانش پیروی کنی. تو حمله می‌کنی.</p></div>
+        <div class="d-step"><p>یا شاید فرمانده خائن باشد که به هر ستوان یک فرمان متفاوت می‌دهد. آن‌وقت ستوان ۲ وفادار است و صادقانه فرمانی را بازگو می‌کند که گرفته است.</p></div>
+        <div class="d-step"><p>در هر دو دنیا دقیقاً همان دو پیام، کلمه به کلمه، به تو می‌رسد؛ پس هیچ‌چیز از آن‌چه دریافت می‌کنی نمی‌تواند بگوید در کدام دنیایی. در دنیای اول باید حمله کنی، پس در دنیای دوم هم حمله می‌کنی.</p></div>
+        <div class="d-step step-check">
+          <div class="d-check" data-check="k-03" data-kind="explain">
+            <div class="d-check-kind">توضیح</div>
+            <p class="d-check-prompt">ستوان ۲ در تصویر آینه‌ای موقعیت توست: پیام فرمانده به او می‌گوید «عقب‌نشینی» و پیام تو به او می‌گوید فرمانده گفته «حمله». با همان استدلالی که همین حالا به کار بردی، ستوان ۲ باید چه کار کند؟ فکرش را بکن، بعد پاسخ را نمایش بده.</p>
+            <button type="button" class="d-btn reveal-btn" data-reveal aria-expanded="false">نمایش پاسخ</button>
+            <div class="d-feedback" aria-live="polite"></div>
+            <template class="fb"><p><strong>عقب‌نشینی.</strong> از جایی که ستوان ۲ ایستاده، ماجرا دقیقاً شبیه دنیایی است که در آن فرمانده وفادارانه «عقب‌نشینی» را فرمان داده و ستوان ۱ دروغ‌گوست؛ و در آن دنیا هدف ۲ می‌گوید باید از فرمانده پیروی کند. پس در دنیای دوم، ستوان ۱ حمله می‌کند و ستوان ۲ عقب می‌نشیند. فرمانده‌ی خائن با گفتن دو حرف متفاوت به دو ستوان، وفادارها را از هم جدا کرده است و هیچ‌کدام نمی‌توانند او را بگیرند.</p><p>دام، تقارن است. هر ستوان وفادار با توجه به پیام‌هایی که دارد کار درست را می‌کند، و دقیقاً همین است که به خائن اجازه می‌دهد آن‌ها را از هم جدا کند.</p></template>
+          </div>
+        </div>
+        <div class="d-step" data-gate="k-03"><p>پس در دنیای دوم تو حمله می‌کنی و ستوان ۲ عقب می‌نشیند. ژنرال‌های وفادار از هم جدا شده‌اند و هدف ۱ برآورده نمی‌شود. دو ژنرال وفادار نتوانستند یک دروغ‌گو را با رأی شکست دهند، چون هیچ‌کدام نمی‌توانست بفهمد دروغ‌گو کیست. و یک قاعده‌ی هوشمندانه‌تر هم نجاتشان نمی‌داد: برهان کامل نشان می‌دهد هر قاعده‌ای که ستوان‌ها از پیش بر سرش توافق کنند، یک خائن در میان سه نفر می‌تواند یکی از دو هدف را بشکند؛ یا با جدا کردن ژنرال‌های وفادار، یا با واداشتن آن‌ها به سرپیچی از فرمانده‌ای وفادار.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- s-05 · Add a fourth general -->
+  <section id="s-05" data-seg="s-05">
+    <h2>یک ژنرال چهارم اضافه کن</h2>
+    <p>حالا یک ستوان سوم اضافه کن و همان حرکت‌ها را نگه دار. فرمانده فرمانش را برای هر ستوان می‌فرستد. بعد هر ستوان برای دو نفر دیگر پیکی می‌فرستد و فرمانی را که گرفته است گزارش می‌کند. در پایان، هر ستوان با اکثریتِ سه نسخه‌ای که حالا در دستش است همراه می‌شود. دو حالت را قدم‌به‌قدم ببین، بعد خودت نقاب خائن را بزن.</p>
+
+    <div data-widget="w-traitor" class="d-wide mount mount-traitor night canvas-card" aria-label="چهار ژنرال و یک خائن: سعی کن ژنرال‌های وفادار را به اختلاف بیندازی"></div>
+
+    <p>هر طور که نقش خائن را بازی کنی، ستوان‌های وفادار هم‌نظر می‌شوند. یک ستوان دروغ‌گو با دو نسخه‌ی راستِ فرمان، در رأی‌گیری شکست می‌خورد. یک فرمانده‌ی دروغ‌گو می‌تواند فرمان‌های متفاوت برای ستوان‌های متفاوت بفرستد، اما چون بقیه صادقانه بازگو می‌کنند، هر ستوان وفادار در پایان همان سه مقدار را در دست دارد و همه به یک اکثریت می‌رسند.</p>
+
+    <p>معلوم می‌شود این یک قاعده‌ی کلی است. وقتی دروغ‌گو می‌تواند هر چیزی را که دوست دارد در پیام بگذارد، توافق فقط وقتی تضمین می‌شود که <strong>بیش از دوسوم ژنرال‌ها وفادار باشند</strong>. سه ژنرال با یک خائن کم می‌آورد؛ چهار تا کافی است.</p>
+    <p>تعداد خائن‌ها را <em>f</em> و تعداد ژنرال‌ها را <em>n</em> بگیر. برای این‌که تضمین شود ژنرال‌های وفادار، هر کاری هم خائن‌ها بکنند، هم‌نظر می‌شوند، لازم است:</p>
+    <div class="rule">
+      <p class="rule-formula"><em>n</em> ≥ 3<em>f</em> + 1</p>
+      <table class="rule-table">
+        <caption>کمترین ژنرال لازم: ۳ × خائن + ۱</caption>
+        <thead><tr><th scope="col">خائن‌ها (<span class="nocaps">f</span>)</th><th scope="col">ژنرال‌های لازم (<span class="nocaps">n</span>)</th></tr></thead>
+        <tbody>
+          <tr><td>۱</td><td>۴</td></tr>
+          <tr><td>۲</td><td>۷</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-check" data-check="k-04" data-correct="b" data-kind="apply">
+      <div class="d-check-kind">به‌کارببر</div>
+      <p class="d-check-prompt">یک سیستم ۱۰ کامپیوتر دارد و آن‌ها پیام‌های معمولی می‌فرستند، پس یک دروغ‌گو می‌تواند هر ادعایی بکند. حداکثر چند تا از آن‌ها می‌توانند خائن باشند و توافق هنوز تضمین‌شده بماند؟</p>
+      <div class="d-options opts-grid" role="group" aria-label="پاسخ تو">
+        <button type="button" class="d-option" data-opt="a" aria-pressed="false">(a) ۴: کمی کمتر از نصف</button>
+        <button type="button" class="d-option" data-opt="b" aria-pressed="false">(b) ۳</button>
+        <button type="button" class="d-option" data-opt="c" aria-pressed="false">(c) ۱</button>
+        <button type="button" class="d-option" data-opt="d" aria-pressed="false">(d) ۰: هر خائنی آن را می‌شکند</button>
+      </div>
+      <div class="d-feedback" aria-live="polite"></div>
+      <template class="fb"><p>(b) ۳. به بیش از دوسوم وفادار نیاز داری. با ۳ خائن، ۷ تا از ۱۰ کامپیوتر وفادارند (۷۰٪). با ۴ خائن فقط ۶ تا از ۱۰ وفادارند (۶۰٪) و این کافی نیست. به زبان قاعده: ۱۰ کامپیوتر ≥ ۳ × ۳ + ۱.</p><p>«کمی کمتر از نصف» غریزه‌ی رأی‌گیری است، اما یک خائن یک رأی صادقانه نمی‌اندازد: می‌تواند به آدم‌های مختلف حرف‌های متفاوت بزند، و برای همین است که اکثریت ساده کافی نیست. درباره‌ی (c) و (d): یک خائن فقط به ۴ ژنرال نیاز دارد و با ۱۰ کامپیوتر جا برای خائن‌های بیشتری هم هست.</p></template>
+    </div>
+  </section>
+
+  <!-- s-06 · The way out -->
+  <section id="way-out" data-seg="s-06">
+    <p class="sec-kicker"><svg aria-hidden="true"><use href="#i-seal"/></svg>راه خروج</p>
+    <h2>سیستم‌های واقعی چطور از تله بیرون می‌آیند</h2>
+    <p>این معما از پژوهشی با حمایت مالی ناسا بیرون آمد؛ پژوهشی برای این‌که کامپیوترها آن‌قدر قابل اعتماد شوند که بشود با آن‌ها هواپیمای مسافربری را پرواز داد. مهندسان هیچ‌وقت «ناممکن» را شکست نداده‌اند. به جایش قوانین بازی را عوض می‌کنند، به یکی از سه راه.</p>
+
+    <div class="routes d-wide">
+      <article class="route night">
+        <h3><svg aria-hidden="true"><use href="#i-seal"/></svg>مُهرهای جعل‌ناپذیر</h3>
+        <dl>
+          <dt>تغییر</dt><dd>هر فرمان مُهری دارد که هیچ‌کس نمی‌تواند جعلش کند. در کامپیوترها، این همان امضای دیجیتال است.</dd>
+          <dt>دستاورد</dt><dd>توافق، با وجود هر تعداد خائن. حتی سه ژنرال هم کافی‌اند، چون مُهر فرمانده‌ی دورو روی دو فرمان متفاوت پیدا می‌شود.</dd>
+          <dt>بها</dt><dd>هر ژنرال به مُهری نیاز دارد که نتوان جعلش کرد، و هر پیام هم هنوز باید برسد.</dd>
+        </dl>
+      </article>
+      <article class="route night">
+        <h3><svg aria-hidden="true"><use href="#i-clock"/></svg>ساعت و مهلت</h3>
+        <dl>
+          <dt>تغییر</dt><dd>فرض می‌کنیم پیام‌ها در مدت‌زمانی معلوم می‌رسند. این همان مهلتی است که در قوانین معمای ۲ بود و راه فهمیدنِ گم‌شدن یک پیک هم همین است: اگر تا مهلت نرسیده باشد، دیگر نمی‌آید.</dd>
+          <dt>دستاورد</dt><dd>سیستم‌هایی مثل PBFT (تحمل عملی خطای بیزانسی، ۱۹۹۹) هیچ‌وقت پاسخ‌های متناقض نمی‌دهند، حتی وقتی شبکه کند است، و هر وقت پیام‌ها به‌موقع برسند به پیشرفت ادامه می‌دهند. آن‌ها به ۳<em>f</em> + ۱ ماشین نیاز دارند: باز هم همان قاعده‌ی دوسوم ژنرال‌ها.</dd>
+          <dt>بها</dt><dd>اگر تأخیرها بتوانند نامحدود باشند، هیچ روشی نمی‌تواند قول بدهد که اصلاً تمام می‌شود، حتی اگر فقط یک ماشین ممکن باشد خراب شود. این در سال ۱۹۸۵ ثابت شد.</dd>
+        </dl>
+      </article>
+      <article class="route night">
+        <h3><svg aria-hidden="true"><use href="#i-odds"/></svg>رضایت به «تقریباً قطعی»</h3>
+        <dl>
+          <dt>تغییر</dt><dd>رأی‌ها به‌جای هویت، با قدرت محاسباتی شمرده می‌شوند. این همان «اثبات کار» بیت‌کوین است.</dd>
+          <dt>دستاورد</dt><dd>
+            <span class="stat"><span class="stat-num">≈۰٫۰۹٪</span><span class="stat-text">احتمال این‌که مهاجمی با ۱۰٪ قدرت محاسباتی، پرداختی را که ۵ بلاک عمیق شده برگرداند. بلاک بیشتر، احتمال کمتر؛ هیچ‌وقت صفر نمی‌شود.</span></span>
+          </dd>
+          <dt>بها</dt><dd>فقط تا وقتی برقرار است که کامپیوترهای صادق بیشترِ قدرت محاسباتی را در دست داشته باشند.</dd>
+        </dl>
+      </article>
+    </div>
+
+    <div class="d-check" data-check="k-05" data-correct="b" data-kind="predict">
+      <div class="d-check-kind">پیش‌بینی</div>
+      <p class="d-check-prompt">یک طرفدار کریپتو می‌گوید: «بیت‌کوین مسئله‌ی ژنرال‌های بیزانسی را حل کرد. وقتی پرداختت تأیید شود، برگرداندنش از نظر ریاضی ناممکن است.» کدام نسخه دقیق است؟</p>
+      <div class="d-options" role="group" aria-label="پاسخ تو">
+        <button type="button" class="d-option" data-opt="a" aria-pressed="false">(a) درست می‌گوید: اثبات کار ناممکن را شکست داد.</button>
+        <button type="button" class="d-option" data-opt="b" aria-pressed="false">(b) برگشت با هر بلاکی که اضافه شود به‌صورت نمایی بعیدتر می‌شود، اما هیچ‌وقت به صفر نمی‌رسد، و فقط تا وقتی که کامپیوترهای صادق بیشتر قدرت محاسباتی را داشته باشند.</button>
+        <button type="button" class="d-option" data-opt="c" aria-pressed="false">(c) غلط است: بیت‌کوین هیچ حفاظتی در برابر برگشت ندارد.</button>
+      </div>
+      <div class="d-feedback" aria-live="polite"></div>
+      <template class="fb"><p>(b). بیت‌کوین ناممکن را شکست نداد. سؤال را از «قطعی» به «به‌احتمال قریب‌به‌یقین» عوض کرد. در اعداد مقاله‌ی اصلی، مهاجمی با ۱۰٪ قدرت محاسباتی حدود ۰٫۰۹٪ احتمال دارد پرداختی را که ۵ بلاک عمیق شده برگرداند، و بیشتر صبر کردن آن احتمال را کوچک‌تر می‌کند، ولی هیچ‌وقت صفرش نمی‌کند.</p><p>درباره‌ی (c): حفاظت واقعی است و تند رشد می‌کند. فقط مطلق نیست. هر راه فراری همین‌طور کار می‌کند: به‌جای شکستن قانون، یک فرض را عوض می‌کند.</p></template>
+    </div>
+  </section>
+
+  <!-- s-07 · What to remember -->
+  <section id="s-07" data-seg="s-07">
+    <h2>چه چیزی را به خاطر بسپاریم</h2>
+    <ul class="recap">
+      <li><svg aria-hidden="true"><use href="#i-rider-x"/></svg><p>اگر پیام‌ها بتوانند گم شوند، دو طرف هیچ‌وقت نمی‌توانند مطمئن باشند که هم‌نظرند. هر تأییدی یک تأیید دیگر می‌خواهد.</p></li>
+      <li><svg aria-hidden="true"><use href="#i-mask"/></svg><p>اگر پیام‌ها برسند اما کسی شاید دروغ بگوید، توافق فقط وقتی تضمین می‌شود که بیش از دوسوم وفادار باشند: ۴ ژنرال برای جان سالم به در بردن از ۱ خائن.</p></li>
+      <li><span class="recap-icons" aria-hidden="true"><svg><use href="#i-seal"/></svg><svg><use href="#i-clock"/></svg><svg><use href="#i-odds"/></svg></span><p>سیستم‌های واقعی این حدها را شکست نمی‌دهند. قوانین را عوض می‌کنند: امضاهای جعل‌ناپذیر، مهلت‌ها، یا «تقریباً قطعی».</p></li>
+    </ul>
+    <p class="closing">پس آیا ژنرال‌ها اصلاً می‌توانند مطمئن باشند؟ فقط با عوض کردن قوانین بازی، و فقط تا وقتی آن قوانین برقرار بمانند.</p>
+    <p><a href="#top" class="replay-link" data-replay-hero>↑ پخش دوباره‌ی محاصره</a></p>
+  </section>
+
+</main>
+</div>
+
+<footer class="sources">
+  <h2>منابع</h2>
+  <ol>
+    <li>Lamport, Shostak &amp; Pease, “<a href="https://lamport.azurewebsites.net/pubs/byz.pdf">The Byzantine Generals Problem</a>” (1982): حالت سه ژنرال و چهار ژنرال، قاعده‌ی دوسوم، پیام‌های امضاشده.</li>
+    <li>“<a href="https://en.wikipedia.org/wiki/Two_Generals%27_Problem">Two Generals’ Problem</a>,” Wikipedia: معمای پیک گمشده و TCP.</li>
+    <li>Fischer, Lynch &amp; Paterson, “<a href="https://dspace.mit.edu/handle/1721.1/149560">Impossibility of Distributed Consensus with One Faulty Process</a>” (1985).</li>
+    <li>Castro &amp; Liskov, “<a href="https://www.read.seas.harvard.edu/~kohler/class/cs239-w08/castro99practical.pdf">Practical Byzantine Fault Tolerance</a>” (1999).</li>
+    <li>Nakamoto, “<a href="https://bitcoin.org/bitcoin.pdf">Bitcoin: A Peer-to-Peer Electronic Cash System</a>”: عدد ۱۰٪ و ۵ بلاک.</li>
+    <li>Leslie Lamport، <a href="https://lamport.azurewebsites.net/pubs/pubs.html">یادداشت‌هایی درباره‌ی مقاله‌هایش</a>: خاستگاه ناسا و هواپیمای مسافربری.</li>
+  </ol>
+  <p class="credit">اثر اصلی ساخته‌ی Claude Opus 5.5 با اسکیل <a href="https://github.com/gravitypersists/didactician">didactician</a> است؛ <a href="https://github.com/gravitypersists/exploring-byzantine-generals-problem">کد اصلی در گیت‌هاب</a>. برگردان فارسی و بازطراحی برای وبلاگ اهورا؛ اثر از Michael Silveira و منتشرشده تحت <a href="LICENSE">مجوز MIT</a> است.</p>
+  <p><a href="../" class="blog-home-link">→ بازگشت به وبلاگ اهورا</a></p>
+</footer>
+
+<script src="assets/replay.js"></script>
+<script src="assets/arrow.js"></script>
+<script src="assets/widget.js"></script>
+<script src="assets/page.js"></script>
+<script src="widgets/w-two-worlds/index.js"></script>
+<script src="widgets/w-traitor/index.js"></script>
+</body>
+</html>

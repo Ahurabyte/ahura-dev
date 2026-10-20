@@ -1,0 +1,32 @@
+{
+  "data_origins": [],
+  "page_contract": {
+    "theme": "Both mounts carry or sit inside the page's .night scope (assets/page.css), which redefines the kit token names to a moonlit palette. Use only tokens (var(--surface), var(--ink), var(--c2)…) and the widget becomes part of the night scene in both page themes. Don't set your own page-level background.",
+    "colour_meaning": "ATTACK = var(--c2) + sword icon #i-attack; RETREAT = var(--c1) + U-turn icon #i-retreat (for what a general decides or does). A MESSAGE carrying either (chips on arrows, inboxes, ballots) = envelope icon #i-msg in that colour + the quoted word, e.g. “ATTACK” / “He said RETREAT”, so an arrow never reads as one general attacking another (user review d-07); traitor = var(--c5) + mask icon #i-mask + the word TRAITOR; doubt = var(--c4); goal met / agreement = var(--good) + #i-check; goal failed / split = var(--bad) + #i-x. Colour is never the only cue.",
+    "icons": "The page has an inline SVG sprite: #i-attack, #i-retreat, #i-mask, #i-rider, #i-rider-x, #i-x, #i-q, #i-check, #i-tent (viewBox 0 0 32 32), #i-seal, #i-clock, #i-odds, #i-msg (envelope: a message). Reuse with <svg><use href=\"#i-mask\"/></svg>; they draw with currentColor.",
+    "goals_card_wording": "Goal 1: every loyal general does the same thing. Goal 2: if the commander is loyal, they follow his order. (s-03's card, reused smaller on your canvas.)",
+    "scroll_steps": "For a mount inside a .d-scrolly canvas, page.js sets data-step=\"N\" on the mount (0 = before the first step) and dispatches CustomEvent 'didactician:step' on the mount with detail {step, prev, total} whenever the active step changes. Read el.dataset.step at init too: the step may already be set before your script runs."
+  },
+  "widgets": {
+    "w-two-worlds": {
+      "segment": "s-04",
+      "mount": "[data-widget=\"w-two-worlds\"]",
+      "placement": "Inside the sticky canvas (.d-scrolly-canvas.night.canvas-card, 16px padding) of the s-04 scrolly. The page owns the six step cards in the right column (desktop) / below (mobile); the step text only states conclusions, so your canvas carries the pictures and its short on-canvas captions as specified in the plan.",
+      "size": { "desktop": "canvas column ≈ 500–530px wide × min 440px tall, sticky", "mobile": "100% wide (≈ 294px inside the card at 360px), sticky; mount min-height max(55vh − 34px, 420px) and the canvas grows to fit (review P-01 contract)" },
+      "steps": "data-step 0 = steps locked or not reached (show step 1's picture: inbox only). 1–6 as in the plan. The page's scrolly is locked until k-02 is answered, so you will see 0 until then.",
+      "k03_contract": "k-03's prompt and its Reveal button live in the page's step-5 card (a .d-check with data-check=\"k-03\"), not on your canvas. At step 5 draw world B from L2's side with his mirrored inbox, but no Reveal button and no answer. Step 6 is never dispatched until the reader taps Reveal: the page holds the active step at 5 until then. The page also dispatches CustomEvent 'didactician:reveal' {check: 'k-03'} on the mount when Reveal is tapped.",
+      "files": ["index.js", "index.css"],
+      "cdn": [],
+      "data_origins": []
+    },
+    "w-traitor": {
+      "segment": "s-05",
+      "mount": "[data-widget=\"w-traitor\"]",
+      "placement": "In the flow of s-05 (not sticky), class \"d-wide night canvas-card\": a dark card with 16px padding, up to 960px wide. The page writes the lead-in paragraph above (the majority-of-three rule) and the 'why it works' paragraph, the rule and k-04 below. Tabs, case text, ballots, status line, tries/splits counter and Reset are all yours.",
+      "size": { "desktop": "up to 960×520, fixed height across tabs", "mobile": "100% × ≈520 (tabs above the canvas, status and reset below), fixed height across tabs; chips and camps ≥ 44px touch targets" },
+      "files": ["index.js", "index.css"],
+      "cdn": [],
+      "data_origins": []
+    }
+  }
+}
