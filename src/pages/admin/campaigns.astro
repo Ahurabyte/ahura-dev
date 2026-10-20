@@ -20,7 +20,9 @@ import AdminShell from "../../components/admin/AdminShell.astro";
   </div>
 
   <script is:inline>
-    (function () {
+    /* Deferred to DOMContentLoaded: AdminShell defines window.AdminAPI in its own
+       script, which runs AFTER this page script during parsing. */
+    window.addEventListener("DOMContentLoaded", function () {
       function faStatus(s) {
         return { draft: "پیش‌نویس", sending: "در حال ارسال", sent: "ارسال شده", failed: "ناموفق" }[s] || s;
       }
@@ -96,6 +98,6 @@ import AdminShell from "../../components/admin/AdminShell.astro";
         });
         load();
       });
-    })();
+    });
   </script>
 </AdminShell>

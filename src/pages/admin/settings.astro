@@ -6,7 +6,9 @@ import AdminShell from "../../components/admin/AdminShell.astro";
   <div id="adm-settings"><div class="adm-loading">در حال بارگذاری...</div></div>
 
   <script is:inline>
-    (function () {
+    /* Deferred to DOMContentLoaded: AdminShell defines window.AdminAPI in its own
+       script, which runs AFTER this page script during parsing. */
+    window.addEventListener("DOMContentLoaded", function () {
       window.AdminAPI.ready.then(function () {
         var A = window.AdminAPI;
         var root = document.getElementById("adm-settings");
@@ -33,6 +35,6 @@ import AdminShell from "../../components/admin/AdminShell.astro";
           if (e.message !== "unauthorized") root.innerHTML = '<div class="adm-error">خطا: ' + A.esc(e.message) + "</div>";
         });
       });
-    })();
+    });
   </script>
 </AdminShell>

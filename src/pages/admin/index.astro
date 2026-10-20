@@ -8,7 +8,9 @@ import AdminShell from "../../components/admin/AdminShell.astro";
   </div>
 
   <script is:inline>
-    (function () {
+    /* Deferred to DOMContentLoaded: AdminShell defines window.AdminAPI in its own
+       script, which runs AFTER this page script during parsing. */
+    window.addEventListener("DOMContentLoaded", function () {
       function faStatus(s) {
         return { confirmed: "تأیید شده", pending_confirmation: "در انتظار تأیید", unsubscribed: "لغو شده", bounced: "برگشتی" }[s] || s;
       }
@@ -60,6 +62,6 @@ import AdminShell from "../../components/admin/AdminShell.astro";
           return t + "</table>";
         }
       });
-    })();
+    });
   </script>
 </AdminShell>
