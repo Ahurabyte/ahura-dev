@@ -152,17 +152,18 @@ Secrets are managed separately:
 wrangler secret put ADMIN_TOKEN
 ```
 
-## Email provider setup (not configured yet)
+## Email provider setup (Resend)
 
-1. Pick a transactional/marketing provider with an HTTP API (e.g. Resend,
-   Postmark). Do not create accounts or paid plans without the owner's approval.
-2. Add a `send()` implementation to `mailProviders` in `src/worker.js`
-   following the existing interface. Read credentials from Worker secrets only.
-3. Set `EMAIL_PROVIDER` to the new provider name and deploy.
-4. Resend pending confirmations from the dashboard (subscriber row action).
-
-Until then, `/api/subscribe` returns `email_sent: false` and the dashboard
-shows the provider as inactive. Campaign sending stays disabled.
+The provider is Resend (`EMAIL_PROVIDER=resend`); the adapter lives in
+`mailProviders` in `src/worker.js` and reads its credential from the
+`RESEND_API_KEY` Worker secret — never from the repo. The sending domain
+ahura.dev must be verified in the Resend dashboard (SPF/DKIM records in
+Cloudflare DNS); `EMAIL_FROM` optionally overrides the default sender
+`Ahura Blog <newsletter@ahura.dev>`. Until the secret is set, the adapter
+reports `canSend: false`, `/api/subscribe` returns `email_sent: false`
+and the dashboard shows the provider as inactive. After setting the
+secret, resend pending confirmations from the dashboard (subscriber row
+action). Campaign sending stays disabled (not implemented yet).
 
 ## Admin authentication
 

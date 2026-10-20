@@ -89,7 +89,11 @@ function siteUrl(env) {
 }
 
 function emailProvider(env) {
-  return env.EMAIL_PROVIDER || "none";
+  const configured = String(env.EMAIL_PROVIDER || "none").toLowerCase();
+  if (configured !== "none") return configured;
+  // The Cloudflare deploy API has silently dropped `vars` before; when the
+  // Resend secret is present the intent is unambiguous.
+  return env.RESEND_API_KEY ? "resend" : "none";
 }
 
 function corsHeaders(req, env) {
@@ -203,6 +207,10 @@ function isObviousBot(userAgent) {
 
 /* ---------------- email provider adapter ---------------- */
 
+/* Providers plug in here with the same interface:
+ * { name, canSend, async send({to, subject, html, text}) }.
+ * An entry may be a factory `(env) => provider` when it needs secrets;
+ * credentials always come from Worker secrets, never from the repo. */
 const mailProviders = {
   none: {
     name: "none",
@@ -211,14 +219,43 @@ const mailProviders = {
       throw new Error("email_provider_not_configured");
     },
   },
-  /* Future providers (resend, postmark, ...) plug in here with the same
-   * interface: { name, canSend, async send({to, subject, html, text}) }.
-   * Credentials always come from Worker secrets, never from the repo. */
+  resend: (env) => ({
+    name: "resend",
+    canSend: Boolean(env.RESEND_API_KEY),
+    async send({ to, subject, html, text }) {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: env.EMAIL_FROM || "Ahura Blog <newsletter@ahura.dev>",
+          to,
+          subject,
+          html,
+          text,
+        }),
+      });
+      if (!res.ok) {
+        let detail = "";
+        try {
+          const body = await res.json();
+          detail = String((body && (body.message || body.name)) || "").slice(0, 200);
+        } catch {
+          /* keep the HTTP status only */
+        }
+        throw new Error(`resend_http_${res.status}${detail ? `: ${detail}` : ""}`);
+      }
+      return res.json();
+    },
+  }),
 };
 
 function mailProvider(env) {
   const name = String(emailProvider(env)).toLowerCase();
-  return mailProviders[name] || mailProviders.none;
+  const entry = mailProviders[name] || mailProviders.none;
+  return typeof entry === "function" ? entry(env) : entry;
 }
 
 /* ---------------- public: analytics ---------------- */

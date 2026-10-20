@@ -14,10 +14,11 @@ database_id = "d6558971-e6fb-46b3-9922-766f27a85930"
 [vars]
 SITE_ORIGIN = "https://adsrdsr2.github.io"
 SITE_URL = "https://adsrdsr2.github.io/ahura-dev"
-EMAIL_PROVIDER = "none"
+EMAIL_PROVIDER = "resend"
 
 [triggers]
 crons = ["0 3 * * *"]
 
 # Secrets (set via `wrangler secret put`, never committed):
 #   ADMIN_TOKEN   256-bit random token, admin dashboard authentication
+#   RESEND_API_KEY  Resend API key for the newsletter email provider
