@@ -262,20 +262,22 @@
         var t2 = txt(g, 0, cy + 8, WORD[v] + '»', 'tw-sc-t', 'start');
         var w2 = 14 + 4 + tw(t2);
         w = Math.max(tw(t1), w2) + 18; h = 36; x0 = cx - w / 2; y0 = cy - h / 2;
-        ic.setAttribute('x', (cx - w2 / 2).toFixed(1)); ic.setAttribute('y', (cy + 1).toFixed(1));
-        t2.setAttribute('x', (cx - w2 / 2 + 18).toFixed(1));
+        // RTL: the icon sits at the right (reading start); the text's start anchor is its right edge
+        ic.setAttribute('x', (cx + w2 / 2 - 14).toFixed(1)); ic.setAttribute('y', (cy + 1).toFixed(1));
+        t2.setAttribute('x', (cx + w2 / 2 - 18).toFixed(1));
         rect.setAttribute('rx', 10);
       } else {
         var t = txt(g, 0, cy, o.relay ? '«گفت: ' + WORD[v] + '»' : '«' + WORD[v] + '»', 'tw-sc-t', 'start');
         w = 9 + 14 + 5 + tw(t) + 10; h = 24; x0 = cx - w / 2; y0 = cy - h / 2;
-        ic.setAttribute('x', (x0 + 9).toFixed(1)); ic.setAttribute('y', (cy - 7).toFixed(1));
-        t.setAttribute('x', (x0 + 28).toFixed(1));
+        // RTL mirror of the LTR layout: icon at the right edge, text extends left from x0+w-28
+        ic.setAttribute('x', (x0 + w - 23).toFixed(1)); ic.setAttribute('y', (cy - 7).toFixed(1));
+        t.setAttribute('x', (x0 + w - 28).toFixed(1));
         rect.setAttribute('rx', 12);
       }
       rect.setAttribute('x', x0.toFixed(1)); rect.setAttribute('y', y0.toFixed(1));
       rect.setAttribute('width', w.toFixed(1)); rect.setAttribute('height', h);
       if (o.tag) {
-        var tg = txt(g, x0 + w - 4, y0 - 8, o.tag === 'lie' ? 'دروغ' : 'راست', o.tag === 'lie' ? 'tw-lie tw-halo' : 'tw-true tw-halo', 'end');
+        var tg = txt(g, x0 + w - 4, y0 - 8, o.tag === 'lie' ? 'دروغ' : 'راست', o.tag === 'lie' ? 'tw-lie tw-halo' : 'tw-true tw-halo', 'start');
         if (o.tag === 'lie') { rect.style.strokeDasharray = '4 3'; var m = use('i-mask', x0 + w - 8 - tw(tg) - 16, y0 - 15, 14, g); m.style.color = 'var(--c5)'; }
       }
       if (o.link) g.style.filter = 'drop-shadow(0 0 6px ' + col + ')';
@@ -300,7 +302,8 @@
       var w = 8 + 14 + 4 + tw(t) + 8;
       var x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
       rect.setAttribute('x', x0.toFixed(1)); rect.setAttribute('y', (y - 11).toFixed(1)); rect.setAttribute('width', w.toFixed(1));
-      ic.setAttribute('x', (x0 + 8).toFixed(1)); t.setAttribute('x', (x0 + 26).toFixed(1));
+      // RTL mirror: icon at the right edge, text extends left from x0+w-26
+      ic.setAttribute('x', (x0 + w - 22).toFixed(1)); t.setAttribute('x', (x0 + w - 26).toFixed(1));
       return g;
     }
 
@@ -391,23 +394,25 @@
       // labels
       var ly = L.L1.y + r + 12;
       if (compact) {
-        txt(gLabels, L.L1.x - r, ly, 'تو', 'tw-name is-you tw-halo', 'start');
-        txt(gLabels, L.L2.x + r, ly, world && world.traitor === 'L2' ? 'خائن' : 'ستوان ۲', world && world.traitor === 'L2' ? 'tw-traitor-t tw-halo' : 'tw-name tw-halo', 'end');
+        // RTL: swap start/end so each label occupies the same interval the LTR layout intended
+        txt(gLabels, L.L1.x - r, ly, 'تو', 'tw-name is-you tw-halo', 'end');
+        txt(gLabels, L.L2.x + r, ly, world && world.traitor === 'L2' ? 'خائن' : 'ستوان ۲', world && world.traitor === 'L2' ? 'tw-traitor-t tw-halo' : 'tw-name tw-halo', 'start');
       } else {
-        var cl = txt(gLabels, L.C.x + r + 8, L.C.y - (world && world.traitor === 'C' ? 8 : 0), 'فرمانده', 'tw-name tw-halo', 'start');
+        var cl = txt(gLabels, L.C.x + r + 8, L.C.y - (world && world.traitor === 'C' ? 8 : 0), 'فرمانده', 'tw-name tw-halo', 'end');
         if (world && world.traitor === 'C') {
           var tg = S('g', null, gLabels);
-          use('i-mask', L.C.x + r + 8, L.C.y + 2, 14, tg, 'tw-mask');
-          txt(tg, L.C.x + r + 26, L.C.y + 9, 'خائن', 'tw-traitor-t tw-halo', 'start');
+          var ct = txt(tg, L.C.x + r + 8, L.C.y + 9, 'خائن', 'tw-traitor-t tw-halo', 'end');
+          use('i-mask', L.C.x + r + 12 + tw(ct), L.C.y + 2, 14, tg, 'tw-mask');
           pop(tg, 200, animate);
         }
         var a1 = L.anchor1, a2 = L.anchor2;
+        var ra = function (a) { return a === 'start' ? 'end' : a === 'end' ? 'start' : a; };   // RTL mirror of a text anchor
         var x1 = a1 === 'start' ? L.L1.x - r : L.L1.x, x2 = a2 === 'end' ? L.L2.x + r : L.L2.x;
-        txt(gLabels, x1, ly, L.youLabel, 'tw-name is-you tw-halo', a1);
-        txt(gLabels, x2, ly, 'ستوان ۲', 'tw-name tw-halo', a2);
+        txt(gLabels, x1, ly, L.youLabel, 'tw-name is-you tw-halo', ra(a1));
+        txt(gLabels, x2, ly, 'ستوان ۲', 'tw-name tw-halo', ra(a2));
         if (world && world.traitor === 'L2') {
           var tg2 = S('g', null, gLabels);
-          txt(tg2, x2, ly + 20, 'خائن', 'tw-traitor-t tw-halo', a2);
+          txt(tg2, x2, ly + 20, 'خائن', 'tw-traitor-t tw-halo', ra(a2));
           pop(tg2, 200, animate);
         }
       }
@@ -446,7 +451,7 @@
           L = { r: r, C: C, L1: { x: x1, y: Ly }, L2: { x: W - x1, y: Ly }, anchor1: 'middle', anchor2: 'middle', youLabel: 'تو (ستوان ۱)', w: W };
         }
         var g = S('g', null, svg);
-        txt(g, 0, 8, sp.world ? 'دنیای ' + (sp.world.n === 1 ? '۱' : '۲') : 'چه کسی دروغ می‌گوید؟', 'tw-tag-world', 'start');
+        txt(g, 4, 8, sp.world ? 'دنیای ' + (sp.world.n === 1 ? '۱' : '۲') : 'چه کسی دروغ می‌گوید؟', 'tw-tag-world', 'end');
         drawWorld(g, sp, sp.world, L, animate);
         if (sp.s === 6 && sp.split) drawSplit(L, animate);
       } else if (narrow) {
@@ -457,10 +462,10 @@
           var outer = S('g', { transform: 'translate(0,' + (i * (hw + gapV)).toFixed(1) + ')' }, svg);
           var inner = S('g', null, outer);
           var world = WORLDS[n];
-          txt(inner, 0, 8, 'دنیای ' + (n === 1 ? '۱' : '۲'), 'tw-title', 'start');
+          txt(inner, 4, 8, 'دنیای ' + (n === 1 ? '۱' : '۲'), 'tw-title', 'end');
           var sub = S('g', null, inner);
-          use('i-mask', 0, 16, 14, sub, 'tw-mask');
-          txt(sub, 18, 23, world.traitor === 'C' ? 'فرمانده دروغ می‌گوید' : 'ستوان ۲ دروغ می‌گوید', 'tw-sub tw-halo', 'start');
+          use('i-mask', 4, 16, 14, sub, 'tw-mask');
+          txt(sub, 22, 23, world.traitor === 'C' ? 'فرمانده دروغ می‌گوید' : 'ستوان ۲ دروغ می‌گوید', 'tw-sub tw-halo', 'end');
           var Ls = { r: rs, compact: true, stacked: true, w: W, C: { x: W / 2, y: rs + 4 }, L1: { x: rs + 2, y: hw - (rs + 25) }, L2: { x: W - rs - 2, y: hw - (rs + 25) } };
           drawWorld(inner, sp, world, Ls, animate);
           if (animate && inner.animate) anims.push(inner.animate([{ opacity: 0, transform: 'translateY(' + (i ? 18 : -18) + 'px)' }, { opacity: 1, transform: 'none' }],
@@ -485,8 +490,9 @@
           var sub = S('g', null, inner);
           var st = txt(sub, 0, 24, world.traitor === 'C' ? 'فرمانده دروغ می‌گوید' : 'ستوان ۲ دروغ می‌گوید', 'tw-sub tw-halo', 'start');
           var sw = 14 + 4 + tw(st);
-          use('i-mask', w / 2 - sw / 2, 17, 14, sub, 'tw-mask');
-          st.setAttribute('x', (w / 2 - sw / 2 + 18).toFixed(1));
+          // RTL mirror: icon at the right end of the centred group, text extends left from there
+          use('i-mask', w / 2 + sw / 2 - 14, 17, 14, sub, 'tw-mask');
+          st.setAttribute('x', (w / 2 + sw / 2 - 18).toFixed(1));
           var Lc = { r: rc, compact: true, w: w, C: { x: w / 2, y: top + rc + 6 }, L1: { x: rc + 2, y: Lyc }, L2: { x: w - rc - 2, y: Lyc } };
           drawWorld(inner, sp, world, Lc, animate);
           if (animate && inner.animate) anims.push(inner.animate([{ opacity: 0, transform: 'translateX(' + (i ? 28 : -28) + 'px)' }, { opacity: 1, transform: 'none' }],
@@ -522,8 +528,9 @@
       if (w > maxW) { t.textContent = 'هدف ۱ برآورده نشد: جدایی!'; w = 8 + 14 + 6 + tw(t) + 10; }
       var rect = S('rect', { x: x - w / 2, y: by - 13, width: w, height: 26, rx: 13, class: 'tw-split-bg' });
       g.insertBefore(rect, t);
-      use('i-x', x - w / 2 + 8, by - 7, 14, g).style.color = 'var(--bad)';
-      t.setAttribute('x', (x - w / 2 + 28).toFixed(1));
+      // RTL mirror: icon at the right edge, text extends left from x+w/2-28
+      use('i-x', x + w / 2 - 22, by - 7, 14, g).style.color = 'var(--bad)';
+      t.setAttribute('x', (x + w / 2 - 28).toFixed(1));
       pop(g, 700, animate);
     }
 

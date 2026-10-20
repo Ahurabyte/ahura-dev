@@ -172,12 +172,12 @@
     narrow: {
       w: 328, h: 360, city: { x: 164, y: 184, r: 46 }, moon: { x: 292, y: 36 },
       camps: {
-        A: { x: 164, y: 60, lx: 192, ly: 64, anchor: 'start' },
+        A: { x: 164, y: 60, lx: 192, ly: 64, anchor: 'end' },
         B: { x: 60, y: 290, lx: 60, ly: 338, anchor: 'middle' },
         C: { x: 268, y: 290, lx: 268, ly: 338, anchor: 'middle' }
       },
       roads: { AB: 'M164,60 Q8,140 60,290', AC: 'M164,60 Q320,140 268,290', BC: 'M60,290 Q164,350 268,290' },
-      xLabel: { dx: 0, dy: -24 }, maskLabel: { x: 250, y: 254, anchor: 'end' }, cityLabelDy: -60
+      xLabel: { dx: 0, dy: -24 }, maskLabel: { x: 250, y: 254, anchor: 'start' }, cityLabelDy: -60
     }
   };
   var HERO_END = 4600;
@@ -474,7 +474,7 @@
     var step = 0, layout = '';
     var LAY = {
       wide: { w: 480, h: 344, r: 30, C: [240, 76], L1: [104, 256], L2: [376, 256], cl: [240, 30, 'middle'], l1: [104, 308], l2: [376, 308] },
-      narrow: { w: 312, h: 224, r: 22, C: [156, 44], L1: [52, 168], L2: [260, 168], cl: [186, 44, 'start'], l1: [52, 208], l2: [260, 208] }
+      narrow: { w: 312, h: 224, r: 22, C: [156, 44], L1: [52, 168], L2: [260, 168], cl: [186, 44, 'end'], l1: [52, 208], l2: [260, 208] }
     };
     function chip(x, y, text, color, icon) {
       var g = el('g', { class: 'chip' }, svg);
@@ -485,8 +485,9 @@
       var tw = t.getComputedTextLength ? t.getComputedTextLength() : text.length * 7;
       var w = tw + 14 + 6 + 20, x0 = x - w / 2;
       bg.setAttribute('x', x0.toFixed(1)); bg.setAttribute('width', w.toFixed(1));
-      ic.setAttribute('x', (x0 + 10).toFixed(1));
-      t.setAttribute('x', (x0 + 30).toFixed(1));
+      // RTL mirror: icon at the right edge; the text (start-anchored) extends left from x0+w-30
+      ic.setAttribute('x', (x0 + w - 24).toFixed(1));
+      t.setAttribute('x', (x0 + w - 30).toFixed(1));
       return g;
     }
     function draw() {
