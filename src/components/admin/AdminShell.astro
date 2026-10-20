@@ -13,6 +13,8 @@ const { title, page, fluid = false } = Astro.props;
 const nav = [
   { id: "dashboard", label: "داشبورد", href: withBase("/admin/") },
   { id: "writing", label: "استودیو نوشتن", href: withBase("/admin/writing/") },
+  { id: "posts", label: "نوشته‌ها", href: withBase("/admin/posts/") },
+  { id: "drafts", label: "پیش‌نویس‌ها", href: withBase("/admin/drafts/") },
   { id: "analytics", label: "آمار بازدید", href: withBase("/admin/analytics/") },
   { id: "subscribers", label: "مشترکین", href: withBase("/admin/subscribers/") },
   { id: "campaigns", label: "کمپین‌ها", href: withBase("/admin/campaigns/") },

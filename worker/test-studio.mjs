@@ -231,6 +231,83 @@ test("security: asset keys are unguessable; bad keys 404", async () => {
   assert.equal(r2.status, 404);
 });
 
+/* ---------- publishing workflow ---------- */
+
+let pubId, pubId2, noteId;
+test("publishing: article starts as draft, publish validates slug", async () => {
+  const c = await api("/api/admin/documents", {
+    method: "POST", headers: auth,
+    body: { title: `e2e publish ${TS}`, document_type: "article", markdown_content: "متن مقاله برای تست انتشار" },
+  });
+  assert.equal(c.status, 201);
+  pubId = c.data.document.id;
+  createdDocIds.push(pubId);
+  assert.equal(c.data.document.publish_state, "draft");
+
+  const drafts = await api(`/api/admin/documents?publish_state=draft&q=${encodeURIComponent("e2e publish " + TS)}`, { headers: auth });
+  assert.ok(drafts.data.documents.some((d) => d.id === pubId));
+
+  const noSlug = await api(`/api/admin/documents/${pubId}/publish`, { method: "POST", headers: auth, body: {} });
+  assert.equal(noSlug.status, 400);
+  assert.equal(noSlug.data.code, "invalid_slug");
+
+  const badSlug = await api(`/api/admin/documents/${pubId}/publish`, {
+    method: "POST", headers: auth, body: { slug: "Bad Slug!", excerpt: "x" },
+  });
+  assert.equal(badSlug.status, 400);
+  assert.equal(badSlug.data.code, "invalid_slug");
+});
+
+test("publishing: publish marks state, lists, blocks delete; unpublish restores", async () => {
+  const slug = `e2e-pub-${TS}`;
+  const p = await api(`/api/admin/documents/${pubId}/publish`, {
+    method: "POST", headers: auth, body: { slug, excerpt: "توضیح تست" },
+  });
+  assert.equal(p.status, 200);
+  assert.equal(p.data.slug, slug);
+  assert.ok(p.data.published_at);
+
+  const pubs = await api("/api/admin/documents?publish_state=published", { headers: auth });
+  const row = pubs.data.documents.find((d) => d.id === pubId);
+  assert.ok(row, "published doc appears in نوشته‌ها list");
+  assert.equal(row.sync_state, "dirty");
+
+  const del = await api(`/api/admin/documents/${pubId}`, { method: "DELETE", headers: auth });
+  assert.equal(del.status, 409);
+  assert.equal(del.data.code, "must_unpublish_first");
+
+  const c2 = await api("/api/admin/documents", {
+    method: "POST", headers: auth,
+    body: { title: `e2e publish two ${TS}`, document_type: "article", markdown_content: "دوم" },
+  });
+  pubId2 = c2.data.document.id;
+  createdDocIds.push(pubId2);
+  const clash = await api(`/api/admin/documents/${pubId2}/publish`, {
+    method: "POST", headers: auth, body: { slug, excerpt: "x" },
+  });
+  assert.equal(clash.status, 409);
+  assert.equal(clash.data.code, "slug_taken");
+
+  const un = await api(`/api/admin/documents/${pubId}/unpublish`, { method: "POST", headers: auth, body: {} });
+  assert.equal(un.status, 200);
+  const afterUn = await api(`/api/admin/documents/${pubId}`, { headers: auth });
+  assert.equal(afterUn.data.document.publish_state, "draft");
+});
+
+test("publishing: non-article cannot be published", async () => {
+  const c = await api("/api/admin/documents", {
+    method: "POST", headers: auth,
+    body: { title: `e2e note ${TS}`, document_type: "note", markdown_content: "یادداشت" },
+  });
+  noteId = c.data.document.id;
+  createdDocIds.push(noteId);
+  const p = await api(`/api/admin/documents/${noteId}/publish`, {
+    method: "POST", headers: auth, body: { slug: `e2e-note-${TS}`, excerpt: "x" },
+  });
+  assert.equal(p.status, 400);
+  assert.equal(p.data.code, "not_an_article");
+});
+
 after(async () => {
   const { default: cp } = await import("node:child_process");
   const d1 = (sql, params = []) =>

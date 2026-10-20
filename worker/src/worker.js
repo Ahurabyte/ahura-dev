@@ -622,7 +622,17 @@ function docRow(r) {
     word_count: r.word_count,
     created_at: r.created_at,
     updated_at: r.updated_at,
+    publish_state: r.publish_state || "draft",
+    slug: r.slug || null,
+    excerpt: r.excerpt || "",
+    published_at: r.published_at || null,
+    sync_state: r.sync_state || "clean",
   };
+}
+
+const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/;
+function validSlug(s) {
+  return typeof s === "string" && SLUG_RE.test(s);
 }
 
 async function handleDocuments(req, env, seg, url) {
@@ -636,6 +646,7 @@ async function handleDocuments(req, env, seg, url) {
     const type = url.searchParams.get("type");
     const tag = (url.searchParams.get("tag") || "").trim().slice(0, 60);
     const sort = url.searchParams.get("sort") || "updated";
+    const publishState = url.searchParams.get("publish_state");
     const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1);
     const perPage = Math.min(100, Math.max(5, parseInt(url.searchParams.get("per_page") || "20", 10) || 20));
 
@@ -644,6 +655,10 @@ async function handleDocuments(req, env, seg, url) {
     if (DOC_STATUSES.has(status)) {
       where.push("d.status = ?");
       params.push(status);
+    }
+    if (publishState === "draft" || publishState === "published") {
+      where.push("d.publish_state = ?");
+      params.push(publishState);
     }
     if (folderId === "none") {
       where.push("d.folder_id IS NULL");
@@ -692,7 +707,8 @@ async function handleDocuments(req, env, seg, url) {
     const rows = await db
       .prepare(
         `SELECT d.id, d.title, d.document_type, d.folder_id, d.status, d.is_pinned,
-                d.tags, d.version, d.word_count, d.created_at, d.updated_at
+                d.tags, d.version, d.word_count, d.created_at, d.updated_at,
+                d.publish_state, d.slug, d.excerpt, d.published_at, d.sync_state
          FROM ${fromSql} ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`
       )
       .bind(...params, perPage, (page - 1) * perPage)
@@ -779,13 +795,36 @@ async function handleDocuments(req, env, seg, url) {
     const status = body.status !== undefined && DOC_STATUSES.has(body.status) ? body.status : cur.status;
     const is_pinned = body.is_pinned !== undefined ? (body.is_pinned ? 1 : 0) : cur.is_pinned;
     const tags = body.tags !== undefined ? cleanTags(body.tags) : cur.tags;
+    // Publishing metadata: slug/excerpt may be edited in any state; the slug
+    // must stay a valid URL segment and unique among non-trashed documents.
+    let slug = cur.slug;
+    if (body.slug !== undefined) {
+      const s = String(body.slug || "").trim();
+      if (s && !validSlug(s)) return err("invalid_slug", 400, "invalid_slug");
+      if (s && s !== cur.slug) {
+        const clash = await db
+          .prepare("SELECT id FROM documents WHERE slug = ? AND status != 'trashed' AND id != ?")
+          .bind(s, id)
+          .first();
+        if (clash) return err("slug_taken", 409, "slug_taken");
+      }
+      slug = s || null;
+    }
+    const excerpt = body.excerpt !== undefined ? String(body.excerpt).slice(0, 400) : cur.excerpt;
+    // Publishing invariant: anything user-visible changing on a published
+    // document makes its git copy stale.
+    const sync_state =
+      cur.publish_state === "published" &&
+      (content !== cur.markdown_content || title !== cur.title || tags !== cur.tags || slug !== cur.slug || excerpt !== cur.excerpt)
+        ? "dirty"
+        : cur.sync_state;
     const newVersion = cur.version + 1;
     await db
       .prepare(
         `UPDATE documents SET title=?, markdown_content=?, folder_id=?, status=?,
-         is_pinned=?, tags=?, version=?, word_count=?, updated_at=? WHERE id=?`
+         is_pinned=?, tags=?, version=?, word_count=?, updated_at=?, slug=?, excerpt=?, sync_state=? WHERE id=?`
       )
-      .bind(title, content, folder_id, status, is_pinned, tags, newVersion, countWords(content), now, id)
+      .bind(title, content, folder_id, status, is_pinned, tags, newVersion, countWords(content), now, slug, excerpt, sync_state, id)
       .run();
     const updated = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
     await maybeCreateRevision(db, updated, body.manual ? "manual" : "auto");
@@ -795,6 +834,11 @@ async function handleDocuments(req, env, seg, url) {
 
   /* DELETE /api/admin/documents/:id — soft delete by default, ?permanent=1 for hard */
   if (seg.length === 4 && req.method === "DELETE") {
+    const cur = await db.prepare("SELECT publish_state FROM documents WHERE id = ?").bind(id).first();
+    if (!cur) return err("not_found", 404, "not_found");
+    // A published document has a live git copy; unpublish first so the sync
+    // can remove the MDX file deterministically.
+    if (cur.publish_state === "published") return err("must_unpublish_first", 409, "must_unpublish_first");
     const permanent = url.searchParams.get("permanent") === "1";
     if (permanent) {
       await db.batch([
@@ -833,6 +877,57 @@ async function handleDocuments(req, env, seg, url) {
     if (!r.meta.changes) return err("not_found", 404, "not_found");
     await audit(db, `document_${seg[4]}`, `id=${id}`);
     return json({ success: true, status: to });
+  }
+
+  /* POST /api/admin/documents/:id/publish — draft -> published (marks git sync dirty) */
+  if (seg.length === 5 && seg[4] === "publish" && req.method === "POST") {
+    let body;
+    try {
+      body = await readJson(req);
+    } catch {
+      return err("invalid_json", 400, "invalid_json");
+    }
+    const cur = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
+    if (!cur) return err("not_found", 404, "not_found");
+    if (cur.status !== "active") return err("not_active", 400, "not_active");
+    if (cur.document_type !== "article") return err("not_an_article", 400, "not_an_article");
+    if (!cur.title || !cur.title.trim()) return err("title_required", 400, "title_required");
+    if (!cur.markdown_content || !cur.markdown_content.trim()) return err("empty_content", 400, "empty_content");
+    const slug = (body.slug !== undefined ? String(body.slug || "") : String(cur.slug || "")).trim();
+    if (!validSlug(slug)) return err("invalid_slug", 400, "invalid_slug");
+    const clash = await db
+      .prepare("SELECT id FROM documents WHERE slug = ? AND status != 'trashed' AND id != ?")
+      .bind(slug, id)
+      .first();
+    if (clash) return err("slug_taken", 409, "slug_taken");
+    const excerpt = body.excerpt !== undefined ? String(body.excerpt).slice(0, 400) : String(cur.excerpt || "");
+    const now = utcNow();
+    const published_at = cur.published_at || now.slice(0, 10);
+    await db
+      .prepare(
+        "UPDATE documents SET publish_state='published', slug=?, excerpt=?, published_at=?, sync_state='dirty', version=version+1, updated_at=? WHERE id=?"
+      )
+      .bind(slug, excerpt, published_at, now, id)
+      .run();
+    const snap = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
+    await maybeCreateRevision(db, snap, "manual");
+    await audit(db, "document_publish", `id=${id} slug=${slug}`);
+    return json({ success: true, slug, published_at, version: snap.version });
+  }
+
+  /* POST /api/admin/documents/:id/unpublish — published -> draft */
+  if (seg.length === 5 && seg[4] === "unpublish" && req.method === "POST") {
+    const cur = await db.prepare("SELECT publish_state FROM documents WHERE id = ?").bind(id).first();
+    if (!cur) return err("not_found", 404, "not_found");
+    if (cur.publish_state !== "published") return err("not_published", 400, "not_published");
+    const now = utcNow();
+    await db
+      .prepare("UPDATE documents SET publish_state='draft', sync_state='dirty', version=version+1, updated_at=? WHERE id=?")
+      .bind(now, id)
+      .run();
+    await audit(db, "document_unpublish", `id=${id}`);
+    const snap = await db.prepare("SELECT version FROM documents WHERE id = ?").bind(id).first();
+    return json({ success: true, version: snap.version });
   }
 
   /* GET /api/admin/documents/:id/revisions */

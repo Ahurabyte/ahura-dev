@@ -17,6 +17,11 @@ interface DocMeta {
   word_count: number;
   created_at: string;
   updated_at: string;
+  publish_state: string;
+  slug: string | null;
+  excerpt: string;
+  published_at: string | null;
+  sync_state: string;
 }
 interface FullDoc extends DocMeta {
   markdown_content: string;
@@ -56,6 +61,7 @@ const TYPE_LABELS: Record<string, string> = {
   newsletter: "خبرنامه",
 };
 const AUTOSAVE_MS = 2500;
+const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/;
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const faNum = (n: number | string) => Number(n).toLocaleString("fa-IR");
@@ -253,21 +259,34 @@ export function initStudio() {
     }
     saving = true;
     setSaveStatus("saving");
-    const payload = {
+    const payload: Record<string, any> = {
       title: ($("docTitle") as HTMLInputElement).value.trim() || "Untitled",
       markdown_content: vditor.getValue(),
       document_type: ($("metaType") as HTMLSelectElement).value,
       folder_id: ($("metaFolder") as HTMLSelectElement).value ? parseInt(($("metaFolder") as HTMLSelectElement).value, 10) : null,
       tags: ($("metaTags") as HTMLInputElement).value,
+      excerpt: ($("excerptInput") as HTMLTextAreaElement).value,
       version: current.version,
       manual,
     };
+    // Slug: only send when empty or a valid URL segment, so a half-typed
+    // slug can never break autosave; publish validates strictly server-side.
+    const slugRaw = ($("slugInput") as HTMLInputElement).value.trim();
+    if (slugRaw === "" || SLUG_RE.test(slugRaw)) payload.slug = slugRaw || null;
     try {
       const res = await api(`/api/admin/documents/${current.id}`, { method: "PUT", body: payload });
       current.version = res.version;
       current.title = payload.title;
+      current.document_type = payload.document_type;
+      current.folder_id = payload.folder_id;
+      current.tags = payload.tags;
       current.updated_at = res.updated_at;
       current.markdown_content = payload.markdown_content;
+      if ("slug" in payload) current.slug = payload.slug;
+      current.excerpt = payload.excerpt;
+      // Mirroring the server: edits on a published document stale its git copy.
+      if (current.publish_state === "published") current.sync_state = "dirty";
+      updatePublishUI();
       dirty = false;
       saving = false;
       clearRecovery(current.id);
@@ -361,7 +380,7 @@ export function initStudio() {
         const pinMark = d.is_pinned ? '<span class="pin" title="سنجاق‌شده">📌</span>' : "";
         return `<div class="st-doc${isCur ? " active" : ""}" data-id="${d.id}">
           <div class="st-doc-title">${pinMark}${dirtyMark}<span>${esc(d.title) || "بدون عنوان"}</span></div>
-          <div class="st-doc-meta"><span>${TYPE_LABELS[d.document_type] || d.document_type}</span><span>${faDate(d.updated_at)}</span><span>${faNum(d.word_count)} کلمه</span></div>
+          <div class="st-doc-meta"><span>${TYPE_LABELS[d.document_type] || d.document_type}</span>${d.publish_state === "published" ? '<span class="st-pub-chip">منتشرشده</span>' : ""}<span>${faDate(d.updated_at)}</span><span>${faNum(d.word_count)} کلمه</span></div>
           ${isCur ? `<div class="st-doc-actions">
             <button data-op="rename">تغییرنام</button>
             <button data-op="pin">${d.is_pinned ? "برداشتن سنجاق" : "سنجاق"}</button>
@@ -443,6 +462,9 @@ export function initStudio() {
     ($("metaType") as HTMLSelectElement).value = doc.document_type;
     ($("metaFolder") as HTMLSelectElement).value = doc.folder_id ? String(doc.folder_id) : "";
     ($("metaTags") as HTMLInputElement).value = doc.tags || "";
+    ($("slugInput") as HTMLInputElement).value = doc.slug || "";
+    ($("excerptInput") as HTMLTextAreaElement).value = doc.excerpt || "";
+    updatePublishUI();
     ($("docInfo") as HTMLElement).innerHTML =
       `نسخه‌ی ${faNum(doc.version)} · ساخته‌شده: ${faDate(doc.created_at)}<br>آخرین تغییر: ${faDate(doc.updated_at)}`;
     ($("studioWelcome") as HTMLElement).hidden = true;
@@ -458,6 +480,108 @@ export function initStudio() {
     renderDocList();
     checkRecovery(doc);
     void loadRevisions();
+  }
+
+  /* ---------------- publishing ---------------- */
+
+  function updatePublishUI() {
+    const badge = $("pubBadge") as HTMLElement;
+    const hint = $("pubSyncHint") as HTMLElement;
+    const btnP = $("btnPublish") as HTMLButtonElement;
+    const btnU = $("btnUnpublish") as HTMLButtonElement;
+    if (!current) {
+      badge.textContent = "پیش‌نویس";
+      badge.className = "st-badge st-badge-draft";
+      hint.textContent = "";
+      btnP.hidden = true;
+      btnU.hidden = true;
+      return;
+    }
+    const published = current.publish_state === "published";
+    badge.textContent = published ? "منتشرشده" : "پیش‌نویس";
+    badge.className = "st-badge " + (published ? "st-badge-pub" : "st-badge-draft");
+    if (published) {
+      hint.textContent =
+        current.sync_state === "dirty"
+          ? "تغییرات در انتظار همگام‌سازی با سایت است"
+          : current.slug
+            ? "همگام با سایت"
+            : "";
+    } else {
+      hint.textContent = "";
+    }
+    const isArticle = current.document_type === "article";
+    btnP.hidden = published;
+    btnU.hidden = !published;
+    btnP.disabled = !isArticle;
+    btnP.title = isArticle ? "" : "برای انتشار، نوع سند را «مقاله» انتخاب کن";
+    ($("publishSection") as HTMLElement).hidden = !current;
+  }
+
+  function validateForPublish(): { slug: string; excerpt: string } | null {
+    if (!current) return null;
+    if (current.document_type !== "article") {
+      toast("فقط سندهای «مقاله» قابل انتشارند.", true);
+      return null;
+    }
+    const slug = ($("slugInput") as HTMLInputElement).value.trim();
+    if (!SLUG_RE.test(slug)) {
+      toast("اسلاگ نامعتبر است — فقط حروف کوچک انگلیسی، عدد و خط‌تیره.", true);
+      return null;
+    }
+    const excerpt = ($("excerptInput") as HTMLTextAreaElement).value.trim();
+    if (!excerpt) {
+      toast("توضیح کوتاه (متا) را وارد کن.", true);
+      return null;
+    }
+    return { slug, excerpt };
+  }
+
+  async function publishCurrent() {
+    if (!current || !vditor || !editorReady) return;
+    const v = validateForPublish();
+    if (!v) return;
+    // Save first so the published copy is the current content.
+    if (!(await saveDoc(false))) {
+      toast("ابتدا ذخیره باید موفق باشد.", true);
+      return;
+    }
+    if (!current) return;
+    setSaveStatus("saving");
+    try {
+      const res = await api(`/api/admin/documents/${current.id}/publish`, {
+        method: "POST",
+        body: { slug: v.slug, excerpt: v.excerpt },
+      });
+      current.version = res.version;
+      current.publish_state = "published";
+      current.slug = res.slug;
+      current.published_at = res.published_at;
+      current.sync_state = "dirty";
+      setSaveStatus("saved");
+      updatePublishUI();
+      void refreshList(false);
+      toast("منتشر شد. برای رفتن روی سایت، همگام‌سازی لازم است — به من بگو انجامش بدم.");
+    } catch (e: any) {
+      setSaveStatus("idle");
+      toast("انتشار ناموفق بود: " + (e.message || e), true);
+    }
+  }
+
+  async function unpublishCurrent() {
+    if (!current) return;
+    if (!confirm("انتشار این سند لغو شود؟ (از سایت برداشته می‌شود)")) return;
+    try {
+      const res = await api(`/api/admin/documents/${current.id}/unpublish`, { method: "POST", body: {} });
+      current.version = res.version;
+      current.publish_state = "draft";
+      current.sync_state = "dirty";
+      updatePublishUI();
+      void refreshList(false);
+      toast("به پیش‌نویس برگشت.");
+    } catch (e: any) {
+      toast("لغو انتشار ناموفق بود: " + (e.message || e), true);
+    }
   }
 
   function checkRecovery(doc: FullDoc) {
@@ -741,6 +865,21 @@ export function initStudio() {
       setSaveStatus("dirty");
       void saveDoc(false);
     });
+    ($("slugInput") as HTMLInputElement).addEventListener("change", () => {
+      if (!current) return;
+      dirty = true;
+      setSaveStatus("dirty");
+      void saveDoc(false);
+    });
+    ($("excerptInput") as HTMLTextAreaElement).addEventListener("change", () => {
+      if (!current) return;
+      dirty = true;
+      setSaveStatus("dirty");
+      void saveDoc(false);
+    });
+    ($("btnPublish") as HTMLButtonElement).addEventListener("click", () => void publishCurrent());
+    ($("btnUnpublish") as HTMLButtonElement).addEventListener("click", () => void unpublishCurrent());
+    ($("metaType") as HTMLSelectElement).addEventListener("change", () => updatePublishUI());
 
     document.querySelectorAll("#modeSwitcher button").forEach((b) => {
       b.addEventListener("click", () => void switchMode((b as HTMLElement).dataset.mode as any));
@@ -869,8 +1008,12 @@ export function initStudio() {
     try {
       await refreshFolders();
       await refreshList(false);
+      const fromUrl = new URLSearchParams(location.search).get("doc");
+      const wanted = fromUrl && /^\d+$/.test(fromUrl) ? parseInt(fromUrl, 10) : null;
       const last = localStorage.getItem("ahura-studio-last");
-      const target = last && docs.some((d) => d.id === parseInt(last, 10)) ? parseInt(last, 10) : docs[0]?.id;
+      const target =
+        (wanted && docs.some((d) => d.id === wanted) ? wanted : null) ??
+        (last && docs.some((d) => d.id === parseInt(last, 10)) ? parseInt(last, 10) : docs[0]?.id);
       if (target) {
         await openDoc(target);
       } else {

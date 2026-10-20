@@ -116,6 +116,24 @@ import AdminShell from "../../components/admin/AdminShell.astro";
           <div class="st-doc-info" id="docInfo"></div>
         </div>
       </div>
+      <div class="st-right-section" id="publishSection" hidden>
+        <h3>انتشار</h3>
+        <div class="st-pub-row">
+          <span class="st-badge st-badge-draft" id="pubBadge">پیش‌نویس</span>
+          <span class="st-sync-hint" id="pubSyncHint"></span>
+        </div>
+        <label class="st-field st-field-spaced"><span>اسلاگ (آدرس پست)</span>
+          <input id="slugInput" class="adm-input" dir="ltr" placeholder="my-post-slug">
+        </label>
+        <label class="st-field st-field-spaced"><span>توضیح کوتاه (متا و خلاصه)</span>
+          <textarea id="excerptInput" class="adm-input" rows="3" placeholder="یک یا دو جمله درباره‌ی پست"></textarea>
+        </label>
+        <div class="st-meta-actions">
+          <button id="btnPublish" class="adm-btn primary" type="button">انتشار</button>
+          <button id="btnUnpublish" class="adm-btn danger" type="button" hidden>لغو انتشار</button>
+        </div>
+        <p class="st-pub-note">«انتشار» سند را به بخش نوشته‌ها می‌برد؛ برای رفتن روی سایت، همگام‌سازی گیت لازم است.</p>
+      </div>
       <div class="st-right-section">
         <h3>تاریخچه‌ی نسخه‌ها</h3>
         <div id="revisionList" class="st-revisions"><div class="st-empty-sub">نسخه‌ای ثبت نشده.</div></div>
@@ -327,6 +345,17 @@ import AdminShell from "../../components/admin/AdminShell.astro";
     .st-backdrop[hidden] { display: none; }
     .st-right-section { margin-bottom: 22px; }
     .st-right-section h3 { font-size: 0.85rem; margin: 0 0 10px; opacity: 0.7; }
+    .st-pub-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .st-badge { font-size: 0.72rem; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--adm-border, #e0d9c8); }
+    .st-badge-draft { background: #f3ead8; color: #7a6a3f; }
+    .st-badge-pub { background: #dcead9; color: #3d6136; }
+    html.dark .st-badge-draft { background: #4a4025; color: #d8c78f; }
+    html.dark .st-badge-pub { background: #2f4429; color: #a9cfa0; }
+    .st-sync-hint { font-size: 0.74rem; opacity: 0.75; }
+    .st-field-spaced { margin-top: 10px; }
+    .st-pub-note { font-size: 0.74rem; opacity: 0.7; margin-top: 10px; line-height: 1.7; }
+    .st-pub-chip { background: #dcead9; color: #3d6136; border-radius: 999px; padding: 0 7px; font-size: 0.66rem; }
+    html.dark .st-pub-chip { background: #2f4429; color: #a9cfa0; }
     .st-stats div {
       display: flex; justify-content: space-between; font-size: 0.86rem;
       padding: 5px 0; border-bottom: 1px dashed var(--adm-border, #e0d9c8);
