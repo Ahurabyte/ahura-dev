@@ -21,4 +21,4 @@ Allow: /
 User-agent: CCBot
 Allow: /
 
-Sitemap: https://adsrdsr2.github.io/ahura-dev/sitemap.xml
+Sitemap: https://ahurabyte.github.io/ahura-dev/sitemap.xml

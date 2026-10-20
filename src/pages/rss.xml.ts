@@ -6,7 +6,7 @@ const esc = (s: string) =>
 
 /** rss.xml — generated at build time from the posts collection. */
 export const GET: APIRoute = ({ site }) => {
-  const origin = (site?.toString() ?? "https://adsrdsr2.github.io/").replace(/\/$/, "");
+  const origin = (site?.toString() ?? "https://ahurabyte.github.io/").replace(/\/$/, "");
   const home = `${origin}${withBase("/")}`;
   const items = getPosts()
     .map((p) => {

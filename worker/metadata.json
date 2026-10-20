@@ -1,1 +1,1 @@
-{"bindings":[{"id":"d6558971-e6fb-46b3-9922-766f27a85930","name":"DB","type":"d1"}],"compatibility_date":"2026-10-01","main_module":"worker.js","vars":{"EMAIL_PROVIDER":"resend","SITE_ORIGIN":"https://adsrdsr2.github.io","SITE_URL":"https://adsrdsr2.github.io/ahura-dev"}}
+{"bindings":[{"id":"d6558971-e6fb-46b3-9922-766f27a85930","name":"DB","type":"d1"}],"compatibility_date":"2026-10-01","main_module":"worker.js","vars":{"EMAIL_PROVIDER":"resend","SITE_ORIGIN":"https://ahurabyte.github.io","SITE_URL":"https://ahurabyte.github.io/ahura-dev"}}

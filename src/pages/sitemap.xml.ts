@@ -7,7 +7,7 @@ import { CONCEPTS } from "../data/knowledge";
  * pages themselves (posts + knowledge concepts + core pages). HTML pages only.
  */
 export const GET: APIRoute = ({ site }) => {
-  const origin = (site?.toString() ?? "https://adsrdsr2.github.io/").replace(/\/$/, "");
+  const origin = (site?.toString() ?? "https://ahurabyte.github.io/").replace(/\/$/, "");
   const u = (path: string) => `${origin}${withBase(path)}`;
   const today = new Date().toISOString().slice(0, 10);
 

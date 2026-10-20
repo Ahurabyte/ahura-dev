@@ -36,7 +36,7 @@ function rehypePrefixImages() {
 // Graph, sitemap and RSS all derive from this. When the ahura.dev custom
 // domain is connected, flip this back to 'https://ahura.dev'.
 export default defineConfig({
-  site: 'https://adsrdsr2.github.io',
+  site: 'https://ahurabyte.github.io',
   base,
   markdown: {
     rehypePlugins: [rehypePrefixImages],

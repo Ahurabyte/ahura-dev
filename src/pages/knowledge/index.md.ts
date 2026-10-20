@@ -4,7 +4,7 @@ import { CONCEPTS } from "../../data/knowledge";
 
 /** /knowledge/index.md — Markdown mirror of the Knowledge Base index. */
 export const GET: APIRoute = () => {
-  const abs = (p: string) => `https://adsrdsr2.github.io${withBase(p)}`;
+  const abs = (p: string) => `https://ahurabyte.github.io${withBase(p)}`;
   const posts = getPosts();
   const lines = ["# Knowledge Base — ahura.dev", ""];
   let cat = "";

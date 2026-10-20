@@ -14,8 +14,8 @@ export const GET: APIRoute = () =>
 
 ---
 
-- HTML version: https://adsrdsr2.github.io/ahura-dev/about/
-- Machine-readable author profile: https://adsrdsr2.github.io/ahura-dev/about/author.md
+- HTML version: https://ahurabyte.github.io/ahura-dev/about/
+- Machine-readable author profile: https://ahurabyte.github.io/ahura-dev/about/author.md
 `,
     { headers: { "Content-Type": "text/markdown; charset=utf-8" } }
   );

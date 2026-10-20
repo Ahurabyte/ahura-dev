@@ -9,7 +9,7 @@ export const getStaticPaths: GetStaticPaths = () =>
 export const GET: APIRoute = ({ params }) => {
   const c = conceptBySlug(String(params.concept));
   if (!c) return new Response("Not found", { status: 404 });
-  const abs = (p: string) => `https://adsrdsr2.github.io${withBase(p)}`;
+  const abs = (p: string) => `https://ahurabyte.github.io${withBase(p)}`;
   const posts = getPosts().filter((p) => c.tag && p.tags.includes(c.tag!));
   const lines = [
     `# ${c.name}${c.nameFa ? ` — ${c.nameFa}` : ""}`,

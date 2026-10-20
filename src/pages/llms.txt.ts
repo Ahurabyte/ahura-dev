@@ -7,7 +7,7 @@ import { CONCEPTS } from "../data/knowledge";
  * Generated at build time from the same content as the HTML site.
  */
 export const GET: APIRoute = () => {
-  const abs = (p: string) => `https://adsrdsr2.github.io${withBase(p)}`;
+  const abs = (p: string) => `https://ahurabyte.github.io${withBase(p)}`;
   const posts = getPosts()
     .map(
       (p) =>

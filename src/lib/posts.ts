@@ -59,7 +59,7 @@ export const faDate = (d: string) =>
  *  what Open Graph / JSON-LD / sitemap consumers expect. */
 export function absoluteUrl(basePath: string): string {
   if (/^https?:\/\//.test(basePath)) return basePath;
-  const origin = (import.meta.env.SITE || 'https://adsrdsr2.github.io').replace(/\/$/, '');
+  const origin = (import.meta.env.SITE || 'https://ahurabyte.github.io').replace(/\/$/, '');
   return `${origin}${basePath.startsWith('/') ? '' : '/'}${basePath}`;
 }
 

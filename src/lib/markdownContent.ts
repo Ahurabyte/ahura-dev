@@ -31,7 +31,7 @@ export function postMarkdown(slug: string): string | null {
     "",
     `- Published: ${new Date(post.pubDate).toISOString().slice(0, 10)}`,
     `- Author: Ahura`,
-    `- Canonical: https://adsrdsr2.github.io${withBase(`/posts/${slug}/`)}`,
+    `- Canonical: https://ahurabyte.github.io${withBase(`/posts/${slug}/`)}`,
     post.tags.length ? `- Tags: ${post.tags.join(", ")}` : "",
     "",
     "---",
@@ -63,12 +63,12 @@ personal blog at ahura.dev about what he is learning and building.
 ## Articles
 
 Published posts are listed in the content map:
-https://adsrdsr2.github.io/ahura-dev/ai/content-map.md
+https://ahurabyte.github.io/ahura-dev/ai/content-map.md
 
 ## Identity
 
 - Name: Ahura
-- Site: https://adsrdsr2.github.io/ahura-dev/
+- Site: https://ahurabyte.github.io/ahura-dev/
 - Languages of the site: Persian (fa) with English technical terms
 - This file is the canonical machine-readable author profile.
 `;

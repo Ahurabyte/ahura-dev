@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { getPosts, withBase } from "../../lib/posts";
 
-const abs = (p: string) => `https://adsrdsr2.github.io${withBase(p)}`;
+const abs = (p: string) => `https://ahurabyte.github.io${withBase(p)}`;
 
 const md = (body: string) =>
   new Response(body, { headers: { "Content-Type": "text/markdown; charset=utf-8" } });

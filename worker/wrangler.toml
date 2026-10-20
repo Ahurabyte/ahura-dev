@@ -12,8 +12,8 @@ database_name = "ahura-db"
 database_id = "d6558971-e6fb-46b3-9922-766f27a85930"
 
 [vars]
-SITE_ORIGIN = "https://adsrdsr2.github.io"
-SITE_URL = "https://adsrdsr2.github.io/ahura-dev"
+SITE_ORIGIN = "https://ahurabyte.github.io"
+SITE_URL = "https://ahurabyte.github.io/ahura-dev"
 EMAIL_PROVIDER = "resend"
 
 [triggers]
