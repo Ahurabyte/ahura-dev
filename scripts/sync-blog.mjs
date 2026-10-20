@@ -53,15 +53,18 @@ function mdxFor(doc) {
     `title: ${JSON.stringify(doc.title)}`,
     `description: ${JSON.stringify(doc.excerpt || "")}`,
     `pubDate: ${doc.published_at}`,
-    tags.length ? `tags: [${tags.join(", ")}]` : "tags: []",
-    "---",
-    "",
-  ].join("\n");
-  return fm + (doc.markdown_content || "").trim() + "\n";
+  ];
+  // A cover chosen in the studio library is served by the Worker; the site
+  // prefers this absolute URL over its local card-<slug>.webp convention.
+  if (doc.cover_image) {
+    fm.push(`cover: ${JSON.stringify("https://ahura-api.admine-070.workers.dev/api/assets/" + doc.cover_image)}`);
+  }
+  fm.push(tags.length ? `tags: [${tags.join(", ")}]` : "tags: []", "---", "");
+  return fm.join("\n") + (doc.markdown_content || "").trim() + "\n";
 }
 
 const rows = d1(
-  "SELECT id, title, excerpt, published_at, tags, markdown_content, publish_state, slug, status FROM documents WHERE sync_state = 'dirty'"
+  "SELECT id, title, excerpt, published_at, tags, markdown_content, publish_state, slug, status, cover_image FROM documents WHERE sync_state = 'dirty'"
 ).results;
 
 if (!rows.length) {

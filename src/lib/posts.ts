@@ -8,7 +8,7 @@ export interface PostMeta {
 }
 
 const modules = import.meta.glob<{
-  frontmatter: Omit<PostMeta, 'slug' | 'image' | 'tags'> & { tags?: string[] };
+  frontmatter: Omit<PostMeta, 'slug' | 'image' | 'tags'> & { tags?: string[]; cover?: string };
 }>('../content/posts/*.mdx', { eager: true });
 
 export const withBase = (p: string) =>
@@ -19,10 +19,13 @@ export const FALLBACK_IMAGE = 'images/card-about.webp';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-/** Cover image for a post: the `card-<slug>.webp` convention (checked on
- *  disk at build time; `process.cwd()` is the project root during
- *  `astro build`), then the generic fallback. */
-function imageFor(slug: string): string {
+/** Cover image for a post: an explicit frontmatter `cover` (absolute URL,
+ *  e.g. a studio-library asset chosen in the dashboard) wins; otherwise the
+ *  `card-<slug>.webp` convention (checked on disk at build time;
+ *  `process.cwd()` is the project root during `astro build`), then the
+ *  generic fallback. */
+function imageFor(slug: string, cover?: string): string {
+  if (cover && /^https?:\/\//.test(cover)) return cover;
   const candidates = [`images/card-${slug}.webp`, FALLBACK_IMAGE];
   for (const rel of candidates) {
     try {
@@ -38,12 +41,12 @@ export function getPosts(): PostMeta[] {
   return Object.entries(modules)
     .map(([path, mod]) => {
       const slug = path.split('/').pop()!.replace(/\.mdx$/, '');
-      const { tags, ...rest } = mod.frontmatter;
+      const { tags, cover, ...rest } = mod.frontmatter;
       return {
         slug,
         ...rest,
         tags: Array.isArray(tags) ? tags : [],
-        image: imageFor(slug),
+        image: imageFor(slug, cover),
       };
     })
     .sort((a, b) => new Date(b.pubDate).valueOf() - new Date(a.pubDate).valueOf());
@@ -55,6 +58,7 @@ export const faDate = (d: string) =>
 /** Absolute URL (origin from astro.config `site`) for a base-prefixed path —
  *  what Open Graph / JSON-LD / sitemap consumers expect. */
 export function absoluteUrl(basePath: string): string {
+  if (/^https?:\/\//.test(basePath)) return basePath;
   const origin = (import.meta.env.SITE || 'https://adsrdsr2.github.io').replace(/\/$/, '');
   return `${origin}${basePath.startsWith('/') ? '' : '/'}${basePath}`;
 }

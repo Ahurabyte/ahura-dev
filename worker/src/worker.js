@@ -627,6 +627,7 @@ function docRow(r) {
     excerpt: r.excerpt || "",
     published_at: r.published_at || null,
     sync_state: r.sync_state || "clean",
+    cover_image: r.cover_image || null,
   };
 }
 
@@ -708,7 +709,7 @@ async function handleDocuments(req, env, seg, url) {
       .prepare(
         `SELECT d.id, d.title, d.document_type, d.folder_id, d.status, d.is_pinned,
                 d.tags, d.version, d.word_count, d.created_at, d.updated_at,
-                d.publish_state, d.slug, d.excerpt, d.published_at, d.sync_state
+                d.publish_state, d.slug, d.excerpt, d.published_at, d.sync_state, d.cover_image
          FROM ${fromSql} ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`
       )
       .bind(...params, perPage, (page - 1) * perPage)
@@ -811,20 +812,35 @@ async function handleDocuments(req, env, seg, url) {
       slug = s || null;
     }
     const excerpt = body.excerpt !== undefined ? String(body.excerpt).slice(0, 400) : cur.excerpt;
+    // Cover image: an assets key chosen in the studio, validated against the
+    // library so a stale/forged key can't break the site's <img>.
+    let cover_image = cur.cover_image ?? null;
+    if (body.cover_image !== undefined) {
+      const k = body.cover_image === null ? "" : String(body.cover_image).trim();
+      if (!k) {
+        cover_image = null;
+      } else if (!/^[0-9a-f]{32}\.(png|jpg|webp|gif)$/.test(k)) {
+        return err("invalid_cover", 400, "invalid_cover");
+      } else {
+        const a = await db.prepare("SELECT key FROM assets WHERE key = ?").bind(k).first();
+        if (!a) return err("cover_not_found", 400, "cover_not_found");
+        cover_image = k;
+      }
+    }
     // Publishing invariant: anything user-visible changing on a published
     // document makes its git copy stale.
     const sync_state =
       cur.publish_state === "published" &&
-      (content !== cur.markdown_content || title !== cur.title || tags !== cur.tags || slug !== cur.slug || excerpt !== cur.excerpt)
+      (content !== cur.markdown_content || title !== cur.title || tags !== cur.tags || slug !== cur.slug || excerpt !== cur.excerpt || cover_image !== (cur.cover_image ?? null))
         ? "dirty"
         : cur.sync_state;
     const newVersion = cur.version + 1;
     await db
       .prepare(
         `UPDATE documents SET title=?, markdown_content=?, folder_id=?, status=?,
-         is_pinned=?, tags=?, version=?, word_count=?, updated_at=?, slug=?, excerpt=?, sync_state=? WHERE id=?`
+         is_pinned=?, tags=?, version=?, word_count=?, updated_at=?, slug=?, excerpt=?, sync_state=?, cover_image=? WHERE id=?`
       )
-      .bind(title, content, folder_id, status, is_pinned, tags, newVersion, countWords(content), now, slug, excerpt, sync_state, id)
+      .bind(title, content, folder_id, status, is_pinned, tags, newVersion, countWords(content), now, slug, excerpt, sync_state, cover_image, id)
       .run();
     const updated = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
     await maybeCreateRevision(db, updated, body.manual ? "manual" : "auto");
@@ -1076,7 +1092,7 @@ function base64ToU8(b64) {
 async function handleUpload(req, env) {
   const db = env.DB;
   const ip = clientIp(req);
-  if (!(await checkRateLimit(db, `upload:${ip}`, 30, 3600))) {
+  if (!(await checkRateLimit(db, `upload:${ip}`, 200, 3600))) {
     return err("rate_limited", 429, "rate_limited");
   }
   let form;
@@ -1105,11 +1121,18 @@ async function handleUpload(req, env) {
       return err("invalid_image", 400, "invalid_image");
     }
     const key = `${randomTokenHex(16)}.${detected.ext}`;
+    // Library metadata: the file's own name by default; batch importers can
+    // override via form fields so the studio picker shows meaningful labels.
+    const assetName = String(form.get("asset_name") || file.name || "")
+      .split(/[\\/]/)
+      .pop()
+      .slice(0, 120);
+    const assetCategory = String(form.get("asset_category") || "").slice(0, 60);
     // Stored as base64 TEXT: D1 BLOB bind/read round-trips are unreliable,
     // while TEXT is deterministic. (+33% size; acceptable at this scale.)
     await db
-      .prepare("INSERT INTO assets (key, content_type, size, data) VALUES (?, ?, ?, ?)")
-      .bind(key, detected.mime, size, u8ToBase64(buf))
+      .prepare("INSERT INTO assets (key, content_type, size, data, name, category) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(key, detected.mime, size, u8ToBase64(buf), assetName, assetCategory)
       .run();
     out.push({ name: file.name, url: `${base}/api/assets/${key}`, key });
   }
@@ -1128,6 +1151,44 @@ async function handleAsset(req, env, key) {
       "content-type": row.content_type,
       "cache-control": "public, max-age=31536000, immutable",
     },
+  });
+}
+
+/* GET /api/admin/assets — the studio image library (metadata only; the
+ * image bytes stay behind the public /api/assets/:key route). */
+async function handleAssetsList(req, env, url) {
+  const db = env.DB;
+  const q = (url.searchParams.get("q") || "").trim().slice(0, 120);
+  const category = (url.searchParams.get("category") || "").trim().slice(0, 60);
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1);
+  const perPage = Math.min(100, Math.max(1, parseInt(url.searchParams.get("per_page") || "60", 10) || 60));
+  const where = [];
+  const params = [];
+  if (q) {
+    where.push("name LIKE ?");
+    params.push(`%${q.replace(/[%_]/g, "")}%`);
+  }
+  if (category) {
+    where.push("category = ?");
+    params.push(category);
+  }
+  const whereSql = where.length ? "WHERE " + where.join(" AND ") : "";
+  const t = await db.prepare(`SELECT COUNT(*) c FROM assets ${whereSql}`).bind(...params).first();
+  const rows = await db
+    .prepare(
+      `SELECT key, name, category, content_type, size, created_at FROM assets ${whereSql} ORDER BY created_at DESC, key DESC LIMIT ? OFFSET ?`
+    )
+    .bind(...params, perPage, (page - 1) * perPage)
+    .all();
+  const cats = await db.prepare("SELECT DISTINCT category FROM assets WHERE category != '' ORDER BY category").all();
+  const base = req.url.split("/api/")[0];
+  return json({
+    success: true,
+    total: t.c || 0,
+    page,
+    per_page: perPage,
+    categories: (cats.results || []).map((r) => r.category),
+    assets: (rows.results || []).map((r) => ({ ...r, url: `${base}/api/assets/${r.key}` })),
   });
 }
 
@@ -1352,6 +1413,9 @@ async function handleAdmin(req, env, path, url) {
   }
   if (seg[2] === "upload" && seg.length === 3 && req.method === "POST") {
     return await handleUpload(req, env);
+  }
+  if (seg[2] === "assets" && seg.length === 3 && req.method === "GET") {
+    return await handleAssetsList(req, env, url);
   }
 
   return err("not_found", 404, "not_found");

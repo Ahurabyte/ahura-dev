@@ -128,6 +128,15 @@ import AdminShell from "../../components/admin/AdminShell.astro";
         <label class="st-field st-field-spaced"><span>توضیح کوتاه (متا و خلاصه)</span>
           <textarea id="excerptInput" class="adm-input" rows="3" placeholder="یک یا دو جمله درباره‌ی پست"></textarea>
         </label>
+        <div class="st-cover-box">
+          <span class="st-cover-label">تصویر شاخص</span>
+          <img id="coverPreview" class="st-cover-img" alt="تصویر شاخص" hidden>
+          <div id="coverEmpty" class="st-cover-empty">تصویر شاخص انتخاب نشده؛ سایت از کاور پیش‌فرض استفاده می‌کند.</div>
+          <div class="st-meta-row">
+            <button id="btnPickCover" class="adm-btn adm-btn-ghost st-small" type="button">انتخاب از گالری</button>
+            <button id="btnClearCover" class="adm-btn adm-btn-ghost st-small st-danger" type="button" hidden>حذف تصویر</button>
+          </div>
+        </div>
         <div class="st-meta-actions">
           <button id="btnPublish" class="adm-btn primary" type="button">انتشار</button>
           <button id="btnUnpublish" class="adm-btn danger" type="button" hidden>لغو انتشار</button>
@@ -154,6 +163,22 @@ import AdminShell from "../../components/admin/AdminShell.astro";
         <button id="revisionClose" class="adm-btn adm-btn-ghost">بستن</button>
       </div>
       <p class="st-empty-sub">بازیابی، محتوای فعلی رو به‌عنوان نسخه‌ی جدید ذخیره می‌کنه؛ چیزی گم نمی‌شه.</p>
+    </div>
+  </div>
+
+  <div id="imagePicker" class="st-modal" hidden>
+    <div class="st-modal-card st-picker-card">
+      <h3>گالری تصاویر</h3>
+      <div class="st-picker-tools">
+        <input id="pickerSearch" class="adm-input" placeholder="جست‌وجو در نام تصویر..." autocomplete="off">
+        <select id="pickerCategory" class="adm-input"><option value="">همه‌ی دسته‌ها</option></select>
+      </div>
+      <div id="pickerGrid" class="st-picker-grid"></div>
+      <div id="pickerEmpty" class="st-empty-sub" hidden>تصویری پیدا نشد.</div>
+      <div class="st-modal-actions">
+        <button id="pickerMore" class="adm-btn adm-btn-ghost" type="button" hidden>نمایش بیشتر</button>
+        <button id="pickerClose" class="adm-btn" type="button">بستن</button>
+      </div>
     </div>
   </div>
 
@@ -393,6 +418,33 @@ import AdminShell from "../../components/admin/AdminShell.astro";
     }
     html.dark .st-modal-preview { background: rgba(255,255,255,0.05); }
     .st-modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+
+    /* ---------- cover picker + image library ---------- */
+    .st-cover-box { margin-top: 12px; }
+    .st-cover-label { display: block; font-size: 0.82rem; margin-bottom: 6px; opacity: 0.85; }
+    .st-cover-img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; border: 1px solid var(--adm-border, #e0d9c8); margin-bottom: 8px; }
+    .st-cover-empty {
+      border: 1px dashed var(--adm-border, #cfc5ab); border-radius: 10px; padding: 12px;
+      font-size: 0.8rem; opacity: 0.75; margin-bottom: 8px; line-height: 1.7;
+    }
+    .st-picker-card { width: min(860px, 94vw); max-width: 94vw; }
+    .st-picker-tools { display: flex; gap: 10px; margin-bottom: 12px; }
+    .st-picker-tools .adm-input { flex: 1; }
+    .st-picker-tools select.adm-input { flex: 0 0 180px; }
+    .st-picker-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+      gap: 10px; max-height: 52vh; overflow: auto; padding: 2px;
+    }
+    .st-picker-item {
+      border: 1px solid var(--adm-border, #e0d9c8); background: transparent; border-radius: 10px;
+      padding: 0; overflow: hidden; cursor: pointer; text-align: center; color: inherit;
+    }
+    .st-picker-item:hover { border-color: #b39b5e; box-shadow: 0 2px 10px rgba(0,0,0,0.12); }
+    .st-picker-item img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; display: block; }
+    .st-picker-item span {
+      display: block; font-size: 0.68rem; padding: 5px 6px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; direction: ltr;
+    }
 
     /* responsive: drawers */
     @media (max-width: 1100px) {

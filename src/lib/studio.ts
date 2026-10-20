@@ -22,6 +22,7 @@ interface DocMeta {
   excerpt: string;
   published_at: string | null;
   sync_state: string;
+  cover_image: string | null;
 }
 interface FullDoc extends DocMeta {
   markdown_content: string;
@@ -94,6 +95,13 @@ export function initStudio() {
   let activeFolder: number | "all" = "all";
   let searchQ = "";
   let searchTimer: number | null = null;
+  /* image library / cover state */
+  let coverImage: string | null = null;
+  let pickerTarget: "cover" | "insert" = "cover";
+  let pickerPage = 1;
+  let pickerTotal = 0;
+  let pickerCatsLoaded = false;
+  let pickerSearchTimer: number | null = null;
 
   const A = () => window.AdminAPI;
   const api = (path: string, opts?: any) => A().api(path, opts);
@@ -152,7 +160,15 @@ export function initStudio() {
         "emoji", "headings", "bold", "italic", "strike", "link", "|",
         "list", "ordered-list", "check", "outdent", "indent", "|",
         "quote", "line", "code", "inline-code", "insert-before", "insert-after", "|",
-        "upload", "table", "|",
+        "upload",
+        {
+          name: "gallery",
+          tip: "درج تصویر از گالری",
+          className: "vditor-tooltipped vditor-tooltipped__n",
+          icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+          click: () => openImagePicker("insert"),
+        },
+        "table", "|",
         "undo", "redo", "|",
         "outline", "preview", "fullscreen", "code-theme", "content-theme", "info",
       ],
@@ -266,6 +282,7 @@ export function initStudio() {
       folder_id: ($("metaFolder") as HTMLSelectElement).value ? parseInt(($("metaFolder") as HTMLSelectElement).value, 10) : null,
       tags: ($("metaTags") as HTMLInputElement).value,
       excerpt: ($("excerptInput") as HTMLTextAreaElement).value,
+      cover_image: coverImage,
       version: current.version,
       manual,
     };
@@ -284,6 +301,7 @@ export function initStudio() {
       current.markdown_content = payload.markdown_content;
       if ("slug" in payload) current.slug = payload.slug;
       current.excerpt = payload.excerpt;
+      current.cover_image = coverImage;
       // Mirroring the server: edits on a published document stale its git copy.
       if (current.publish_state === "published") current.sync_state = "dirty";
       updatePublishUI();
@@ -464,6 +482,8 @@ export function initStudio() {
     ($("metaTags") as HTMLInputElement).value = doc.tags || "";
     ($("slugInput") as HTMLInputElement).value = doc.slug || "";
     ($("excerptInput") as HTMLTextAreaElement).value = doc.excerpt || "";
+    coverImage = doc.cover_image || null;
+    updateCoverUI();
     updatePublishUI();
     ($("docInfo") as HTMLElement).innerHTML =
       `نسخه‌ی ${faNum(doc.version)} · ساخته‌شده: ${faDate(doc.created_at)}<br>آخرین تغییر: ${faDate(doc.updated_at)}`;
@@ -480,6 +500,103 @@ export function initStudio() {
     renderDocList();
     checkRecovery(doc);
     void loadRevisions();
+  }
+
+  /* ---------------- image library ---------------- */
+
+  interface LibAsset {
+    key: string;
+    name: string;
+    category: string;
+    url: string;
+    size: number;
+  }
+
+  function updateCoverUI() {
+    const img = $("coverPreview") as HTMLImageElement;
+    const empty = $("coverEmpty") as HTMLElement;
+    const clear = $("btnClearCover") as HTMLButtonElement;
+    if (coverImage) {
+      img.src = A().API + "/api/assets/" + coverImage;
+      img.hidden = false;
+      empty.hidden = true;
+      clear.hidden = false;
+    } else {
+      img.hidden = true;
+      img.removeAttribute("src");
+      empty.hidden = false;
+      clear.hidden = true;
+    }
+  }
+
+  function touchDirty() {
+    dirty = true;
+    setSaveStatus("dirty");
+    if (saveTimer) window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(() => void saveDoc(false), AUTOSAVE_MS);
+  }
+
+  function openImagePicker(target: "cover" | "insert") {
+    pickerTarget = target;
+    ($("imagePicker") as HTMLElement).hidden = false;
+    void loadPicker(true);
+  }
+
+  function closeImagePicker() {
+    ($("imagePicker") as HTMLElement).hidden = true;
+  }
+
+  async function loadPicker(reset: boolean) {
+    if (reset) pickerPage = 1;
+    const q = ($("pickerSearch") as HTMLInputElement).value.trim();
+    const cat = ($("pickerCategory") as HTMLSelectElement).value;
+    const params = new URLSearchParams({ per_page: "60", page: String(pickerPage) });
+    if (q) params.set("q", q);
+    if (cat) params.set("category", cat);
+    let res: any;
+    try {
+      res = await api("/api/admin/assets?" + params.toString());
+    } catch {
+      toast("بارگذاری گالری ناموفق بود.", true);
+      return;
+    }
+    if (!pickerCatsLoaded) {
+      pickerCatsLoaded = true;
+      const sel = $("pickerCategory") as HTMLSelectElement;
+      for (const c of res.categories || []) {
+        const o = document.createElement("option");
+        o.value = c;
+        o.textContent = c;
+        sel.appendChild(o);
+      }
+    }
+    pickerTotal = res.total || 0;
+    const grid = $("pickerGrid") as HTMLElement;
+    if (reset) grid.innerHTML = "";
+    for (const a of (res.assets || []) as LibAsset[]) {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "st-picker-item";
+      item.title = a.name;
+      item.innerHTML = `<img src="${a.url}" alt="${esc(a.name)}" loading="lazy"><span>${esc(a.name)}</span>`;
+      item.addEventListener("click", () => pickAsset(a));
+      grid.appendChild(item);
+    }
+    ($("pickerEmpty") as HTMLElement).hidden = pickerTotal > 0;
+    ($("pickerMore") as HTMLButtonElement).hidden = pickerPage * 60 >= pickerTotal;
+  }
+
+  function pickAsset(a: LibAsset) {
+    if (pickerTarget === "cover") {
+      coverImage = a.key;
+      updateCoverUI();
+      touchDirty();
+      toast("تصویر شاخص انتخاب شد.");
+    } else if (vditor) {
+      vditor.insertValue(`\n![${a.name}](${a.url})\n`);
+      if (current) onEdit(vditor.getValue());
+    }
+    closeImagePicker();
   }
 
   /* ---------------- publishing ---------------- */
@@ -879,6 +996,25 @@ export function initStudio() {
     });
     ($("btnPublish") as HTMLButtonElement).addEventListener("click", () => void publishCurrent());
     ($("btnUnpublish") as HTMLButtonElement).addEventListener("click", () => void unpublishCurrent());
+    ($("btnPickCover") as HTMLButtonElement).addEventListener("click", () => openImagePicker("cover"));
+    ($("btnClearCover") as HTMLButtonElement).addEventListener("click", () => {
+      coverImage = null;
+      updateCoverUI();
+      touchDirty();
+    });
+    ($("pickerClose") as HTMLButtonElement).addEventListener("click", closeImagePicker);
+    ($("pickerMore") as HTMLButtonElement).addEventListener("click", () => {
+      pickerPage++;
+      void loadPicker(false);
+    });
+    ($("pickerCategory") as HTMLSelectElement).addEventListener("change", () => void loadPicker(true));
+    ($("pickerSearch") as HTMLInputElement).addEventListener("input", () => {
+      if (pickerSearchTimer) window.clearTimeout(pickerSearchTimer);
+      pickerSearchTimer = window.setTimeout(() => void loadPicker(true), 350);
+    });
+    ($("imagePicker") as HTMLElement).addEventListener("click", (e) => {
+      if (e.target === $("imagePicker")) closeImagePicker();
+    });
     ($("metaType") as HTMLSelectElement).addEventListener("change", () => updatePublishUI());
 
     document.querySelectorAll("#modeSwitcher button").forEach((b) => {
