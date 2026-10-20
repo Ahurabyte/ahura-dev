@@ -668,6 +668,14 @@ export function initStudio() {
     }
   }
 
+  function syncBackdrop() {
+    const w = window.innerWidth;
+    const studio = $("studio");
+    const rightOpen = w <= 1100 && !studio.classList.contains("right-collapsed");
+    const leftOpen = w <= 820 && !studio.classList.contains("left-collapsed");
+    ($("studioBackdrop") as HTMLElement).hidden = !(rightOpen || leftOpen);
+  }
+
   /* ---------------- wire up ---------------- */
 
   function wireEvents() {
@@ -740,9 +748,25 @@ export function initStudio() {
 
     $("btnToggleLeft").addEventListener("click", () => {
       $("studio").classList.toggle("left-collapsed");
-      if (window.innerWidth <= 820) $("studio").classList.add("left-collapsed");
+      syncBackdrop();
     });
-    $("btnToggleRight").addEventListener("click", () => $("studio").classList.toggle("right-collapsed"));
+    $("btnToggleRight").addEventListener("click", () => {
+      $("studio").classList.toggle("right-collapsed");
+      syncBackdrop();
+    });
+    $("btnCloseLeft").addEventListener("click", () => {
+      $("studio").classList.add("left-collapsed");
+      syncBackdrop();
+    });
+    $("btnCloseRight").addEventListener("click", () => {
+      $("studio").classList.add("right-collapsed");
+      syncBackdrop();
+    });
+    ($("studioBackdrop") as HTMLElement).addEventListener("click", () => {
+      $("studio").classList.add("left-collapsed", "right-collapsed");
+      syncBackdrop();
+    });
+    window.addEventListener("resize", syncBackdrop);
     $("btnFocus").addEventListener("click", () => {
       const on = $("studio").classList.toggle("focus");
       ($("btnFocus") as HTMLElement).classList.toggle("on", on);
@@ -826,6 +850,7 @@ export function initStudio() {
 
     if (window.innerWidth <= 820) $("studio").classList.add("left-collapsed");
     if (window.innerWidth <= 1100) $("studio").classList.add("right-collapsed");
+    syncBackdrop();
   }
 
   /* ---------------- boot ---------------- */
