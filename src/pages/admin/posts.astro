@@ -4,71 +4,65 @@ import { withBase } from "../../lib/posts";
 ---
 
 <AdminShell title="نوشته‌ها" page="posts">
+  <div class="adm-page-head"><h1>نوشته‌های منتشرشده</h1></div>
   <div class="adm-row">
-    <input id="adm-q" class="adm-input" placeholder="جستجو در نوشته‌ها..." />
-    <button id="adm-search" class="adm-btn">جستجو</button>
+    <input id="adm-q" class="adm-input" placeholder="جستجو در نوشته‌ها..." type="search" />
+    <select id="adm-sort" class="adm-select" aria-label="مرتب‌سازی">
+      <option value="updated">آخرین تغییر</option>
+      <option value="created">تاریخ ساخت</option>
+      <option value="title">عنوان</option>
+    </select>
+    <button id="adm-search" class="adm-btn" type="button">جستجو</button>
   </div>
   <div id="adm-posts"><div class="adm-loading">در حال بارگذاری...</div></div>
 
   <script is:inline define:vars={{ writingBase: withBase("/admin/writing/"), siteBase: withBase("/") }}>
-    /* Deferred to DOMContentLoaded: AdminShell defines window.AdminAPI in its own
-       script, which runs AFTER this page script during parsing. */
     window.addEventListener("DOMContentLoaded", function () {
-      var page = 1, perPage = 20;
-      function fmtDate(iso) {
-        if (!iso) return "—";
-        try { return new Date(iso).toLocaleDateString("fa-IR"); } catch (e) { return iso; }
-      }
-      function load() {
-        var A = window.AdminAPI;
+      window.AdminAPI.ready.then(function () {
+        var A = window.AdminAPI, esc = A.esc;
+        var page = 1, perPage = 20;
         var root = document.getElementById("adm-posts");
-        var q = document.getElementById("adm-q").value.trim();
-        var url = "/api/admin/documents?status=active&publish_state=published&per_page=" + perPage + "&page=" + page
-          + (q ? "&q=" + encodeURIComponent(q) : "");
-        root.innerHTML = '<div class="adm-loading">در حال بارگذاری...</div>';
-        A.api(url).then(function (res) {
-          var rows = res.documents, total = res.total;
-          var pages = Math.max(1, Math.ceil(total / perPage));
-          var h = '<div class="adm-card adm-table-wrap">';
-          if (!rows.length) {
-            h += '<div class="adm-empty">نوشته‌ای منتشر نشده است.</div>';
-          } else {
-            h += '<table class="adm-table"><tr><th>عنوان</th><th>اسلاگ</th><th>آخرین تغییر</th><th>انتشار</th><th>همگام‌سازی</th><th>عملیات</th></tr>';
-            rows.forEach(function (r) {
-              var view = siteBase + "posts/" + (r.slug || "") + "/";
-              h += "<tr><td><a href=\"" + writingBase + "?doc=" + r.id + "\">" + A.esc(r.title) + "</a></td>"
-                + "<td dir='ltr' style='text-align:left'>" + A.esc(r.slug || "—") + "</td>"
-                + "<td>" + fmtDate(r.updated_at) + "</td>"
-                + "<td>" + fmtDate(r.published_at) + "</td>"
-                + "<td>" + (r.sync_state === "dirty" ? '<span class="adm-badge unsubscribed">در انتظار همگام‌سازی</span>' : '<span class="adm-badge confirmed">همگام</span>') + "</td>"
-                + '<td><div class="adm-row" style="margin:0">'
-                + '<a class="adm-btn" href="' + writingBase + "?doc=" + r.id + '">ویرایش</a>'
-                + (r.slug ? ' <a class="adm-btn adm-btn-ghost" href="' + view + '" target="_blank" rel="noopener">مشاهده</a>' : "")
-                + ' <button class="adm-btn adm-btn-ghost" data-unpub="' + r.id + '">لغو انتشار</button>'
-                + "</div></td></tr>";
+        var guard = A.seq();
+
+        function load() {
+          var fresh = guard();
+          var q = document.getElementById("adm-q").value.trim();
+          var url = "/api/admin/documents?status=active&publish_state=published&per_page=" + perPage + "&page=" + page
+            + "&sort=" + document.getElementById("adm-sort").value + (q ? "&q=" + encodeURIComponent(q) : "");
+          root.innerHTML = '<div class="adm-loading">در حال بارگذاری...</div>';
+          A.api(url).then(function (res) {
+            if (!fresh()) return;
+            var rows = res.documents, total = res.total;
+            var pages = Math.max(1, Math.ceil(total / perPage));
+            var h = A.table([
+              { label: "عنوان", html: function (r) { return '<a href="' + writingBase + "?doc=" + r.id + '">' + (esc(r.title) || "بدون عنوان") + "</a>"; } },
+              { label: "اسلاگ", key: "slug", ltr: true },
+              { label: "آخرین تغییر", key: "updated_at", fmt: function (v) { return A.faDate(v); } },
+              { label: "انتشار", key: "published_at", fmt: function (v) { return A.faDate(v); } },
+              { label: "همگام‌سازی", html: function (r) { return r.sync_state === "dirty" ? '<span class="adm-badge pending_confirmation">در انتظار همگام‌سازی</span>' : '<span class="adm-badge confirmed">همگام</span>'; } },
+              { label: "عملیات", cls: "adm-td-actions", html: function (r) {
+                return '<div class="adm-row"><a class="adm-btn adm-btn-sm" href="' + writingBase + "?doc=" + r.id + '">ویرایش</a>'
+                  + (r.slug ? '<a class="adm-btn adm-btn-ghost adm-btn-sm" href="' + siteBase + "posts/" + esc(r.slug) + '/" target="_blank" rel="noopener">مشاهده</a>' : "")
+                  + '<button type="button" class="adm-btn adm-btn-ghost adm-btn-sm" data-unpub="' + r.id + '">لغو انتشار</button></div>';
+              } },
+            ], rows, { empty: q ? "نتیجه‌ای پیدا نشد." : "نوشته‌ای منتشر نشده است." });
+            if (total > perPage) h += A.pager(page, pages, total, "نوشته");
+            root.innerHTML = h;
+            A.bindPager(root, page, pages, function (p) { page = p; load(); });
+            root.querySelectorAll("[data-unpub]").forEach(function (b) {
+              b.addEventListener("click", async function () {
+                if (!(await A.confirm("انتشار این نوشته لغو بشه؟ از سایت برداشته می‌شه.", { okText: "لغو انتشار" }))) return;
+                try { await A.api("/api/admin/documents/" + b.getAttribute("data-unpub") + "/unpublish", { method: "POST", body: {} }); A.toast("به پیش‌نویس برگشت."); load(); }
+                catch (e) { A.toast(A.errMsg(e), true); }
+              });
             });
-            h += "</table>";
-          }
-          h += "</div>";
-          h += '<div class="adm-pager"><button class="adm-btn adm-btn-ghost" id="pg-prev"' + (page <= 1 ? " disabled" : "") + ">قبلی</button>"
-            + "<span>" + page + " از " + pages + " (" + total + ")</span>"
-            + '<button class="adm-btn adm-btn-ghost" id="pg-next"' + (page >= pages ? " disabled" : "") + ">بعدی</button></div>";
-          root.innerHTML = h;
-          document.getElementById("pg-prev").onclick = function () { if (page > 1) { page--; load(); } };
-          document.getElementById("pg-next").onclick = function () { if (page < pages) { page++; load(); } };
-          root.querySelectorAll("[data-unpub]").forEach(function (b) {
-            b.onclick = function () {
-              if (!confirm("انتشار این نوشته لغو شود؟ (از سایت برداشته می‌شود)")) return;
-              A.api("/api/admin/documents/" + b.dataset.unpub + "/unpublish", { method: "POST", body: {} })
-                .then(function () { A.toast("به پیش‌نویس برگشت."); load(); })
-                .catch(function (e) { A.toast("خطا: " + (e.message || e), true); });
-            };
-          });
-        }).catch(function (e) { root.innerHTML = '<div class="adm-card adm-empty">خطا: ' + A.esc(e.message || e) + "</div>"; });
-      }
-      document.getElementById("adm-search").onclick = function () { page = 1; load(); };
-      document.getElementById("adm-q").addEventListener("keydown", function (e) { if (e.key === "Enter") { page = 1; load(); } });
-      load();
+          }).catch(function (e) { if (fresh()) A.renderError(root, e); });
+        }
+        document.getElementById("adm-search").addEventListener("click", function () { page = 1; load(); });
+        document.getElementById("adm-q").addEventListener("input", A.debounce(function () { page = 1; load(); }, 350));
+        document.getElementById("adm-sort").addEventListener("change", function () { page = 1; load(); });
+        load();
+      });
     });
   </script>
 </AdminShell>

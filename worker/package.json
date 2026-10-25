@@ -1,0 +1,8 @@
+{
+  "name": "ahura-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:local": "node --test test-local.mjs"
+  }
+}

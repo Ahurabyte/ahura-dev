@@ -12,7 +12,7 @@ const modules = import.meta.glob<{
 }>('../content/posts/*.mdx', { eager: true });
 
 export const withBase = (p: string) =>
-  `${import.meta.env.BASE_URL}${p.replace(/^\//, '')}`;
+  `${(import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')}${p.replace(/^\//, '')}`;
 
 export const FALLBACK_IMAGE = 'images/card-about.webp';
 

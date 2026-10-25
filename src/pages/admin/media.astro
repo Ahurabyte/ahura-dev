@@ -1,0 +1,74 @@
+---
+import AdminShell from "../../components/admin/AdminShell.astro";
+---
+
+<AdminShell title="رسانه‌ها" page="media">
+  <style is:global>
+    .adm-media { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+    .adm-media-item { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .adm-media-thumb { aspect-ratio: 4 / 3; background: var(--adm-hover); display: flex; align-items: center; justify-content: center; }
+    .adm-media-thumb img { width: 100%; height: 100%; object-fit: contain; }
+    .adm-media-info { padding: 10px 12px 12px; font-size: 0.8rem; color: var(--adm-muted); display: flex; flex-direction: column; gap: 8px; }
+    .adm-media-info .adm-row { margin: 0; gap: 6px; }
+    .adm-media-info .adm-btn { flex: 1 1 auto; }
+    @media (max-width: 640px) { .adm-media { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+  </style>
+  <div class="adm-page-head">
+    <h1>رسانه‌ها</h1>
+    <span id="adm-media-sum" class="adm-muted"></span>
+  </div>
+  <div class="adm-notice">عکس‌ها داخل دیتابیس ذخیره می‌شن؛ عکس‌هایی که دیگه در هیچ نوشته‌ای نیستن رو حذف کن تا فضا آزاد بشه. عکس‌های در حال استفاده بدون تأیید دوباره حذف نمی‌شن.</div>
+  <div id="adm-media"><div class="adm-loading">در حال بارگذاری...</div></div>
+
+  <script is:inline>
+    window.addEventListener("DOMContentLoaded", function () {
+      window.AdminAPI.ready.then(function () {
+        var A = window.AdminAPI, esc = A.esc;
+        var page = 1, perPage = 24;
+        var root = document.getElementById("adm-media");
+        var guard = A.seq();
+
+        function load() {
+          var fresh = guard();
+          root.innerHTML = '<div class="adm-loading">در حال بارگذاری...</div>';
+          A.api("/api/admin/assets?page=" + page).then(function (res) {
+            if (!fresh()) return;
+            var total = res.total, pages = Math.max(1, Math.ceil(total / perPage));
+            if (!res.assets.length && page > 1) { page = pages; load(); return; }
+            document.getElementById("adm-media-sum").textContent = A.faNum(total) + " عکس";
+            if (!res.assets.length) { root.innerHTML = '<div class="adm-card"><div class="adm-empty">هنوز عکسی آپلود نشده. داخل استودیو عکس رو بکش و رها کن یا paste کن.</div></div>'; return; }
+            var h = '<div class="adm-media">' + res.assets.map(function (a) {
+              return '<div class="adm-card adm-media-item"><div class="adm-media-thumb"><img loading="lazy" alt="" src="' + esc(a.url) + '" /></div>'
+                + '<div class="adm-media-info"><div>' + esc(A.faBytes(a.size)) + " · " + esc(A.faDate(a.created_at)) + "</div>"
+                + "<div>" + (a.used_in ? '<span class="adm-badge confirmed">در ' + A.faNum(a.used_in) + " نوشته</span>" : '<span class="adm-badge pending_confirmation">بدون استفاده</span>') + "</div>"
+                + '<div class="adm-row"><button type="button" class="adm-btn adm-btn-ghost adm-btn-sm" data-md="' + esc(a.url) + '">کپی مارک‌داون</button>'
+                + '<button type="button" class="adm-btn adm-btn-danger adm-btn-sm" data-del="' + esc(a.key) + '" data-used="' + a.used_in + '">حذف</button></div></div></div>';
+            }).join("") + "</div>";
+            if (total > perPage) h += A.pager(page, pages, total, "عکس");
+            root.innerHTML = h;
+            A.bindPager(root, page, pages, function (p) { page = p; load(); });
+            root.querySelectorAll("[data-md]").forEach(function (b) {
+              b.addEventListener("click", function () {
+                A.copyText("![](" + b.getAttribute("data-md") + ")").then(function (ok) { A.toast(ok ? "کپی شد." : "کپی نشد.", !ok); });
+              });
+            });
+            root.querySelectorAll("[data-del]").forEach(function (b) {
+              b.addEventListener("click", async function () {
+                var used = Number(b.getAttribute("data-used")) > 0;
+                var msg = used ? "این عکس در " + A.faNum(b.getAttribute("data-used")) + " نوشته استفاده شده. با حذف، تصویر اون نوشته‌ها خراب می‌شه. مطمئنی؟" : "این عکس حذف بشه؟";
+                if (!(await A.confirm(msg, { danger: true, okText: "حذف" }))) return;
+                try { await A.api("/api/admin/assets/" + b.getAttribute("data-del") + (used ? "?force=1" : ""), { method: "DELETE" }); A.toast("حذف شد."); load(); }
+                catch (e) { A.toast(A.errMsg(e), true); }
+              });
+            });
+          }).catch(function (e) {
+            if (!fresh()) return;
+            if (e && e.status === 404) root.innerHTML = '<div class="adm-card"><div class="adm-error">این بخش به نسخه‌ی جدید Worker نیاز داره؛ اون رو دیپلوی کن.</div></div>';
+            else A.renderError(root, e);
+          });
+        }
+        load();
+      });
+    });
+  </script>
+</AdminShell>

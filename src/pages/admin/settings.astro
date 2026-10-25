@@ -3,37 +3,80 @@ import AdminShell from "../../components/admin/AdminShell.astro";
 ---
 
 <AdminShell title="تنظیمات" page="settings">
+  <div class="adm-page-head"><h1>تنظیمات</h1></div>
   <div id="adm-settings"><div class="adm-loading">در حال بارگذاری...</div></div>
 
   <script is:inline>
-    /* Deferred to DOMContentLoaded: AdminShell defines window.AdminAPI in its own
-       script, which runs AFTER this page script during parsing. */
     window.addEventListener("DOMContentLoaded", function () {
       window.AdminAPI.ready.then(function () {
-        var A = window.AdminAPI;
+        var A = window.AdminAPI, esc = A.esc;
         var root = document.getElementById("adm-settings");
+        var TABLES = { subscribers: "مشترکین", email_tokens: "توکن‌های ایمیل", campaigns: "کمپین‌ها", analytics_events: "رویدادهای آمار", audit_log: "لاگ فعالیت", documents: "اسناد", folders: "پوشه‌ها", revisions: "نسخه‌ها", assets: "عکس‌ها" };
+        var ACTIONS = { admin_auth_failed: "ورود ناموفق", document_create: "ساخت سند", document_update: "ذخیره‌ی سند", document_publish: "انتشار", document_unpublish: "لغو انتشار", document_trash: "انتقال به زباله", document_hard_delete: "حذف دائمی سند", document_archive: "بایگانی", document_restore: "بازیابی", document_duplicate: "تکثیر", document_revision_restore: "بازیابی نسخه", asset_upload: "آپلود عکس", asset_delete: "حذف عکس", folder_create: "ساخت پوشه", folder_delete: "حذف پوشه", campaign_create: "ساخت کمپین", campaign_update: "ویرایش کمپین", campaign_delete: "حذف کمپین", subscribers_export: "خروجی مشترکین", backup_export: "پشتیبان‌گیری", admin_unsubscribe: "لغو عضویت", admin_delete_subscriber: "حذف مشترک", scheduled_cleanup: "پاکسازی خودکار" };
+
+        function section(t, inner) { return '<div class="adm-section"><h2>' + t + "</h2>" + inner + "</div>"; }
+
         A.api("/api/admin/health").then(function (res) {
           var h = res.health;
-          var rows = Object.keys(h.tables).map(function (t) {
-            return "<tr><td dir='ltr' style='text-align:left'>" + A.esc(t) + "</td><td>" + h.tables[t] + "</td></tr>";
-          }).join("");
-          root.innerHTML =
-            '<div class="adm-section"><h2>وضعیت سیستم</h2><div class="adm-card adm-table-wrap"><table class="adm-table">'
-            + "<tr><th>مؤلفه</th><th>وضعیت</th></tr>"
-            + "<tr><td>ارائه‌دهنده‌ی ایمیل</td><td><span class='adm-badge " + (h.email_sending ? "confirmed" : "pending_confirmation") + "'>" + A.esc(h.provider) + (h.email_sending ? " (فعال)" : " (غیرفعال)") + "</span></td></tr>"
-            + "<tr><td>زمان سرور (UTC)</td><td dir='ltr' style='text-align:left'>" + A.esc(h.time) + "</td></tr>"
-            + "</table></div></div>"
-            + '<div class="adm-section"><h2>جدول‌های دیتابیس</h2><div class="adm-card adm-table-wrap"><table class="adm-table">'
-            + "<tr><th>جدول</th><th>تعداد رکورد</th></tr>" + rows + "</table></div></div>"
-            + '<div class="adm-section"><h2>امنیت</h2><div class="adm-card">'
-            + "<p>احراز هویت با توکن ادمین (Bearer) انجام می‌شه که فقط در حافظه‌ی همین تب مرورگر نگه داشته می‌شه و با بستن تب پاک می‌شه.</p>"
+          var rows = Object.keys(h.tables).map(function (t) { return { t: t, n: h.tables[t] }; });
+          var out = section("ظاهر",
+            '<div class="adm-card"><div class="adm-row" style="margin:0"><span>تم رابط:</span>'
+            + '<button type="button" class="adm-btn adm-btn-ghost" id="adm-theme-set">' + (A.isDark() ? "تغییر به روشن ☀" : "تغییر به تیره ☾") + "</button></div></div>");
+          out += section("وضعیت سیستم", A.table([
+            { label: "مؤلفه", key: "k" },
+            { label: "وضعیت", html: function (r) { return r.v; } },
+          ], [
+            { k: "ارائه‌دهنده‌ی ایمیل", v: "<span class='adm-badge " + (h.email_sending ? "confirmed" : "pending_confirmation") + "'>" + esc(h.provider) + (h.email_sending ? " (فعال)" : " (غیرفعال)") + "</span>" },
+            { k: "نسخه‌ی API", v: "<bdi dir='ltr'>" + esc(h.version || "—") + "</bdi>" },
+            { k: "حجم عکس‌های ذخیره‌شده", v: esc(A.faBytes(h.storage && h.storage.assets_bytes)) },
+            { k: "زمان سرور (UTC)", v: "<bdi dir='ltr'>" + esc(h.time) + "</bdi>" },
+          ]));
+          out += section("جدول‌های دیتابیس", A.table([
+            { label: "جدول", html: function (r) { return esc(TABLES[r.t] || r.t) + ' <code>' + esc(r.t) + "</code>"; } },
+            { label: "تعداد رکورد", key: "n", fmt: A.faNum },
+          ], rows));
+          out += section("پشتیبان‌گیری",
+            '<div class="adm-card"><p style="margin-top:0">اسناد فقط داخل دیتابیس D1 هستن. یک فایل JSON کامل از همه‌ی اسناد و پوشه‌ها دانلود کن و جایی امن نگه دار.</p>'
+            + '<div class="adm-row" style="margin:0"><button type="button" class="adm-btn" id="adm-backup">دانلود پشتیبان</button>'
+            + '<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="adm-backup-rev" /> همراه با تاریخچه‌ی نسخه‌ها</label></div></div>');
+          out += section("امنیت",
+            '<div class="adm-card"><p style="margin-top:0">احراز هویت با توکن ادمین (Bearer) انجام می‌شه که فقط در حافظه‌ی همین تب مرورگر نگه داشته می‌شه و با بستن تب پاک می‌شه.</p>'
             + "<p>برای چرخش توکن: یه توکن ۲۵۶ بیتی جدید بساز و با دستور زیر به‌عنوان سکرت Worker ست کن:</p>"
-            + "<p dir='ltr' style='text-align:left'><code>wrangler secret put ADMIN_TOKEN</code></p>"
-            + "<p>بعد از ست کردن، با توکن جدید وارد شو.</p>"
-            + "</div></div>";
-        }).catch(function (e) {
-          if (e.message !== "unauthorized") root.innerHTML = '<div class="adm-error">خطا: ' + A.esc(e.message) + "</div>";
-        });
+            + "<p dir='ltr' style='text-align:left'><code>wrangler secret put ADMIN_TOKEN</code></p><p style='margin-bottom:0'>بعد از ست کردن، با توکن جدید وارد شو.</p></div>");
+          out += section("فعالیت‌های اخیر", '<div id="adm-audit"><div class="adm-loading">در حال بارگذاری...</div></div>');
+          root.innerHTML = out;
+
+          document.getElementById("adm-theme-set").addEventListener("click", function () { A.setTheme(!A.isDark()); this.textContent = A.isDark() ? "تغییر به روشن ☀" : "تغییر به تیره ☾"; });
+          document.getElementById("adm-backup").addEventListener("click", async function () {
+            var btn = this;
+            btn.disabled = true;
+            try {
+              var res = await A.api("/api/admin/export" + (document.getElementById("adm-backup-rev").checked ? "?revisions=1" : ""), { raw: true });
+              A.download(await res.blob(), "ahura-backup-" + new Date().toISOString().slice(0, 10) + ".json");
+              A.toast("پشتیبان دانلود شد.");
+            } catch (e) { A.toast(A.errMsg(e) + (e.status === 404 ? " (Worker رو آپدیت کن)" : ""), true); }
+            finally { btn.disabled = false; }
+          });
+          loadAudit();
+        }).catch(function (e) { A.renderError(root, e); });
+
+        var auditRows = [], nextBefore = null;
+        function loadAudit(more) {
+          var box = document.getElementById("adm-audit");
+          A.api("/api/admin/audit?limit=30" + (more && nextBefore ? "&before=" + nextBefore : "")).then(function (r) {
+            auditRows = more ? auditRows.concat(r.entries) : r.entries;
+            nextBefore = r.next_before;
+            box.innerHTML = A.table([
+              { label: "رویداد", key: "action", fmt: function (v) { return ACTIONS[v] || v; } },
+              { label: "جزئیات", key: "detail", ltr: true },
+              { label: "زمان", key: "created_at", fmt: function (v) { return A.faDateTime(v); } },
+            ], auditRows, { empty: "رویدادی ثبت نشده." }) + (nextBefore ? '<div class="adm-pagination"><button type="button" class="adm-btn adm-btn-ghost adm-btn-sm" id="adm-audit-more">قدیمی‌تر</button></div>' : "");
+            var b = document.getElementById("adm-audit-more");
+            if (b) b.addEventListener("click", function () { loadAudit(true); });
+          }).catch(function (e) {
+            box.innerHTML = '<div class="adm-card"><div class="adm-error">' + esc(A.errMsg(e)) + (e.status === 404 ? " — برای این بخش Worker جدید لازمه." : "") + "</div></div>";
+          });
+        }
       });
     });
   </script>

@@ -123,12 +123,12 @@ test("subscribe: invalid email is rejected", async () => {
   assert.equal(r.data.code, "invalid_email");
 });
 
-test("subscribe: valid email becomes pending (no API key yet -> email_sent=false)", async () => {
+test("subscribe: valid email becomes pending (no provider -> email_sent=false)", async () => {
   const r = await api("/api/subscribe", { method: "POST", body: { email: testEmail, source: "e2e" } });
   assert.equal(r.status, 200);
   assert.equal(r.data.status, "pending_confirmation");
   assert.equal(r.data.email_sent, false, "must not claim an email was sent");
-  assert.equal(r.data.provider, "resend");
+  assert.equal(r.data.provider, "none");
   const s = await d1("SELECT id, status FROM subscribers WHERE email_norm = ?", [testEmail.toLowerCase()]);
   subscriberId = s.result[0].results[0].id;
   assert.equal(s.result[0].results[0].status, "pending_confirmation");

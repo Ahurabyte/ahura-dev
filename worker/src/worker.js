@@ -31,6 +31,24 @@ const DEVICES = new Set(["desktop", "mobile", "tablet", "unknown"]);
 const SUB_STATUSES = new Set(["pending_confirmation", "confirmed", "unsubscribed", "bounced"]);
 const CAMPAIGN_STATUSES = new Set(["draft", "sending", "sent", "failed"]);
 const CONFIRM_TTL_SEC = 48 * 3600;
+const VERSION = "1.1.0";
+
+/* D1 limits a single row to ~2 MB. Persian text is 2 bytes/char in UTF-8, so
+ * limits are expressed in BYTES (not characters) to stay safely below it. */
+const MAX_DOC_BYTES = 1_500_000;
+const DOC_BODY_MAX = 1_700_000;
+
+class HttpError extends Error {
+  constructor(status, code) {
+    super(code);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+function byteLen(s) {
+  return new TextEncoder().encode(String(s)).length;
+}
 
 /* ---------------- utilities ---------------- */
 
@@ -124,9 +142,19 @@ function withCors(res, req, env) {
 
 async function readJson(req, maxBytes = 65536) {
   const text = await req.text();
-  if (text.length > maxBytes) throw new Error("body too large");
+  // chars <= bytes, so this is a cheap early exit; the exact byte count is
+  // only computed when the body could plausibly be near the limit.
+  if (text.length > maxBytes || (text.length * 3 > maxBytes && byteLen(text) > maxBytes)) {
+    throw new HttpError(413, "body_too_large");
+  }
   if (!text) return {};
   return JSON.parse(text);
+}
+
+/* Maps a readJson() failure to the right response: 413 vs plain bad JSON. */
+function bodyError(e) {
+  if (e instanceof HttpError) return err(e.code, e.status, e.code);
+  return err("invalid_json", 400, "invalid_json");
 }
 
 /* Sliding-window rate limiter backed by D1. */
@@ -207,10 +235,6 @@ function isObviousBot(userAgent) {
 
 /* ---------------- email provider adapter ---------------- */
 
-/* Providers plug in here with the same interface:
- * { name, canSend, async send({to, subject, html, text}) }.
- * An entry may be a factory `(env) => provider` when it needs secrets;
- * credentials always come from Worker secrets, never from the repo. */
 const mailProviders = {
   none: {
     name: "none",
@@ -219,43 +243,14 @@ const mailProviders = {
       throw new Error("email_provider_not_configured");
     },
   },
-  resend: (env) => ({
-    name: "resend",
-    canSend: Boolean(env.RESEND_API_KEY),
-    async send({ to, subject, html, text }) {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: env.EMAIL_FROM || "Ahura Blog <newsletter@ahura.dev>",
-          to,
-          subject,
-          html,
-          text,
-        }),
-      });
-      if (!res.ok) {
-        let detail = "";
-        try {
-          const body = await res.json();
-          detail = String((body && (body.message || body.name)) || "").slice(0, 200);
-        } catch {
-          /* keep the HTTP status only */
-        }
-        throw new Error(`resend_http_${res.status}${detail ? `: ${detail}` : ""}`);
-      }
-      return res.json();
-    },
-  }),
+  /* Future providers (resend, postmark, ...) plug in here with the same
+   * interface: { name, canSend, async send({to, subject, html, text}) }.
+   * Credentials always come from Worker secrets, never from the repo. */
 };
 
 function mailProvider(env) {
   const name = String(emailProvider(env)).toLowerCase();
-  const entry = mailProviders[name] || mailProviders.none;
-  return typeof entry === "function" ? entry(env) : entry;
+  return mailProviders[name] || mailProviders.none;
 }
 
 /* ---------------- public: analytics ---------------- */
@@ -274,8 +269,8 @@ async function handleAnalytics(req, env) {
   let body;
   try {
     body = await readJson(req);
-  } catch {
-    return err("invalid_json", 400, "invalid_json");
+  } catch (e) {
+    return bodyError(e);
   }
 
   const eventId = String(body.event_id || "").slice(0, 64);
@@ -333,8 +328,8 @@ async function handleSubscribe(req, env) {
   let body;
   try {
     body = await readJson(req);
-  } catch {
-    return err("invalid_json", 400, "invalid_json");
+  } catch (e) {
+    return bodyError(e);
   }
 
   const email = normalizeEmail(body.email);
@@ -485,59 +480,123 @@ async function handleUnsubscribe(req, env) {
 
 /* ---------------- admin: analytics queries ---------------- */
 
+/* Windows are CALENDAR days (UTC, today included) compared as ISO prefixes
+ * ("2026-10-20" <= "2026-10-20T07:14:00Z"). That keeps the created_at index
+ * usable and makes the boundary exact. (The old datetime('now','-N days')
+ * comparison mixed a space-separated format with the 'T' format stored in the
+ * table, so the cut-off day was always included in full.) */
+function dayStr(offsetDays) {
+  return new Date(Date.now() + offsetDays * 86400000).toISOString().slice(0, 10);
+}
+const sinceDay = (days) => dayStr(-(days - 1));
+
 async function adminStats(db) {
-  const q = async (sql, ...params) => (await db.prepare(sql).bind(...params).first()) || {};
-  const today = (await q("SELECT COUNT(*) c FROM analytics_events WHERE date(created_at) = date('now')")).c || 0;
-  const d7 = (await q("SELECT COUNT(*) c FROM analytics_events WHERE created_at >= datetime('now','-7 days')")).c || 0;
-  const d30 = (await q("SELECT COUNT(*) c FROM analytics_events WHERE created_at >= datetime('now','-30 days')")).c || 0;
-  const sessions = (await q("SELECT COUNT(DISTINCT session_id) c FROM analytics_events WHERE created_at >= datetime('now','-30 days')")).c || 0;
-  const visitors = (await q("SELECT COUNT(DISTINCT visitor_id) c FROM analytics_events WHERE created_at >= datetime('now','-30 days') AND visitor_id IS NOT NULL")).c || 0;
-  const confirmed = (await q("SELECT COUNT(*) c FROM subscribers WHERE status='confirmed'")).c || 0;
-  const pending = (await q("SELECT COUNT(*) c FROM subscribers WHERE status='pending_confirmation'")).c || 0;
-  const unsub = (await q("SELECT COUNT(*) c FROM subscribers WHERE status='unsubscribed'")).c || 0;
-  return { views_today: today, views_7d: d7, views_30d: d30, sessions_30d: sessions, visitors_30d: visitors, subscribers_confirmed: confirmed, subscribers_pending: pending, subscribers_unsubscribed: unsub };
+  const q = (sql, ...p) => db.prepare(sql).bind(...p);
+  const today = dayStr(0);
+  const d7 = sinceDay(7);
+  const d30 = sinceDay(30);
+  const r = await db.batch([
+    q("SELECT COUNT(*) c FROM analytics_events WHERE created_at >= ?", today),
+    q("SELECT COUNT(*) c FROM analytics_events WHERE created_at >= ?", d7),
+    q("SELECT COUNT(*) c FROM analytics_events WHERE created_at >= ?", d30),
+    q("SELECT COUNT(DISTINCT session_id) c FROM analytics_events WHERE created_at >= ?", d30),
+    q("SELECT COUNT(DISTINCT visitor_id) c FROM analytics_events WHERE created_at >= ? AND visitor_id IS NOT NULL", d30),
+    q("SELECT COUNT(*) c FROM subscribers WHERE status='confirmed'"),
+    q("SELECT COUNT(*) c FROM subscribers WHERE status='pending_confirmation'"),
+    q("SELECT COUNT(*) c FROM subscribers WHERE status='unsubscribed'"),
+    q(`SELECT
+         COALESCE(SUM(status='active' AND publish_state='draft'), 0) drafts,
+         COALESCE(SUM(status='active' AND publish_state='published'), 0) published,
+         COALESCE(SUM(status='active' AND publish_state='published' AND sync_state='dirty'), 0) sync_pending,
+         COALESCE(SUM(status='archived'), 0) archived,
+         COALESCE(SUM(status='trashed'), 0) trashed
+       FROM documents`),
+  ]);
+  const c = (i) => (r[i].results && r[i].results[0] && r[i].results[0].c) || 0;
+  const docs = (r[8].results && r[8].results[0]) || {};
+  return {
+    views_today: c(0),
+    views_7d: c(1),
+    views_30d: c(2),
+    sessions_30d: c(3),
+    visitors_30d: c(4),
+    subscribers_confirmed: c(5),
+    subscribers_pending: c(6),
+    subscribers_unsubscribed: c(7),
+    docs_drafts: docs.drafts || 0,
+    docs_published: docs.published || 0,
+    docs_sync_pending: docs.sync_pending || 0,
+    docs_archived: docs.archived || 0,
+    docs_trashed: docs.trashed || 0,
+  };
 }
 
 async function adminAnalytics(db, days) {
   days = [7, 30, 90].includes(days) ? days : 30;
-  const daily = await db
-    .prepare(
-      `SELECT date(created_at) d, COUNT(*) views, COUNT(DISTINCT session_id) sessions,
+  const since = sinceDay(days);
+  const prevSince = sinceDay(days * 2);
+  const q = (sql, ...p) => db.prepare(sql).bind(...p);
+  const [daily, pages, referrers, devices, utm, totals, prev] = await db.batch([
+    q(
+      `SELECT substr(created_at, 1, 10) d, COUNT(*) views, COUNT(DISTINCT session_id) sessions,
               COUNT(DISTINCT visitor_id) visitors
-       FROM analytics_events WHERE created_at >= datetime('now', ?)
-       GROUP BY d ORDER BY d`
-    )
-    .bind(`-${days} days`)
-    .all();
-  const pages = await db
-    .prepare(
+       FROM analytics_events WHERE created_at >= ? GROUP BY d ORDER BY d`,
+      since
+    ),
+    q(
       `SELECT path, COUNT(*) views, COUNT(DISTINCT session_id) sessions
-       FROM analytics_events WHERE created_at >= datetime('now', ?)
-       GROUP BY path ORDER BY views DESC LIMIT 15`
-    )
-    .bind(`-${days} days`)
-    .all();
-  const referrers = await db
-    .prepare(
+       FROM analytics_events WHERE created_at >= ? GROUP BY path ORDER BY views DESC LIMIT 15`,
+      since
+    ),
+    q(
       `SELECT COALESCE(referrer_domain,'(direct)') ref, COUNT(*) views
-       FROM analytics_events WHERE created_at >= datetime('now', ?)
-       GROUP BY ref ORDER BY views DESC LIMIT 15`
-    )
-    .bind(`-${days} days`)
-    .all();
-  const devices = await db
-    .prepare(
+       FROM analytics_events WHERE created_at >= ? GROUP BY ref ORDER BY views DESC LIMIT 15`,
+      since
+    ),
+    q(
       `SELECT device, COUNT(*) views FROM analytics_events
-       WHERE created_at >= datetime('now', ?) GROUP BY device`
-    )
-    .bind(`-${days} days`)
-    .all();
+       WHERE created_at >= ? GROUP BY device ORDER BY views DESC`,
+      since
+    ),
+    q(
+      `SELECT COALESCE(utm_source,'') source, COALESCE(utm_medium,'') medium,
+              COALESCE(utm_campaign,'') campaign, COUNT(*) views
+       FROM analytics_events
+       WHERE created_at >= ? AND (utm_source IS NOT NULL OR utm_campaign IS NOT NULL)
+       GROUP BY utm_source, utm_medium, utm_campaign ORDER BY views DESC LIMIT 10`,
+      since
+    ),
+    q(
+      `SELECT COUNT(*) views, COUNT(DISTINCT session_id) sessions, COUNT(DISTINCT visitor_id) visitors
+       FROM analytics_events WHERE created_at >= ?`,
+      since
+    ),
+    q(
+      `SELECT COUNT(*) views, COUNT(DISTINCT session_id) sessions, COUNT(DISTINCT visitor_id) visitors
+       FROM analytics_events WHERE created_at >= ? AND created_at < ?`,
+      prevSince,
+      since
+    ),
+  ]);
+  // Zero-fill: days without traffic must still appear, otherwise the chart's
+  // time axis silently collapses.
+  const byDay = new Map((daily.results || []).map((r) => [r.d, r]));
+  const filled = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = dayStr(-i);
+    filled.push(byDay.get(d) || { d, views: 0, sessions: 0, visitors: 0 });
+  }
+  const t = (totals.results && totals.results[0]) || { views: 0, sessions: 0, visitors: 0 };
+  const pv = (prev.results && prev.results[0]) || { views: 0, sessions: 0, visitors: 0 };
   return {
     days,
-    daily: daily.results || [],
+    daily: filled,
     top_pages: pages.results || [],
     referrers: referrers.results || [],
     devices: devices.results || [],
+    utm: utm.results || [],
+    totals: t,
+    previous: pv,
   };
 }
 
@@ -571,8 +630,11 @@ async function adminSubscribers(db, url) {
 }
 
 function csvEscape(v) {
-  const s = String(v == null ? "" : v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  let s = String(v == null ? "" : v);
+  // Neutralise spreadsheet formula injection: subscriber email / source are
+  // attacker-controlled and Excel/Sheets evaluate cells starting with = + - @.
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 /* ---------------- admin: campaigns ---------------- */
@@ -601,7 +663,10 @@ const IMAGE_TYPES = {
   },
   "image/gif": { ext: "gif", sigs: [{ offset: 0, bytes: [0x47, 0x49, 0x46, 0x38] }] },
 };
-const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+/* D1 caps a row at ~2 MB and the image is stored as base64 (+33%), so the raw
+ * limit must stay under ~1.5 MB; the old 2 MB limit made 1.5-2 MB uploads fail
+ * with a bare 500. The dashboard compresses larger images client-side. */
+const MAX_UPLOAD_BYTES = 1_400_000;
 
 function cleanTags(tags) {
   return String(tags || "")
@@ -664,7 +729,6 @@ function docRow(r) {
     excerpt: r.excerpt || "",
     published_at: r.published_at || null,
     sync_state: r.sync_state || "clean",
-    cover_image: r.cover_image || null,
   };
 }
 
@@ -713,50 +777,55 @@ async function handleDocuments(req, env, seg, url) {
       params.push(`%,${tag.replace(/[%_,]/g, "")},%`);
     }
 
-    let fromSql, countSql;
-    if (q) {
-      // Full-text search over title + content; fall back gracefully on bad syntax.
-      let fts;
-      try {
-        fts = q.replace(/"/g, '""');
-        fromSql = `documents d JOIN documents_fts f ON f.rowid = d.id`;
-        where.push(`documents_fts MATCH ?`);
-        params.push(`"${fts}"*`);
-      } catch {
-        fromSql = `documents d`;
-      }
-      if (!fromSql) fromSql = `documents d`;
-    } else {
-      fromSql = `documents d`;
-    }
-    const whereSql = where.length ? "WHERE " + where.join(" AND ") : "";
     const order =
       sort === "created" ? "d.created_at DESC" : sort === "title" ? "d.title ASC" : "d.updated_at DESC";
     // Pinned documents first, then the requested sort.
     const orderSql = `d.is_pinned DESC, ${order}`;
 
-    let total = 0;
+    const runList = async (useFts) => {
+      const w = where.slice();
+      const p = params.slice();
+      let from = "documents d";
+      if (q && useFts) {
+        from = "documents d JOIN documents_fts f ON f.rowid = d.id";
+        w.push("documents_fts MATCH ?");
+        p.push(`"${q.replace(/"/g, '""')}"*`);
+      } else if (q) {
+        // FTS rejected the query (odd punctuation etc.) -> plain substring search.
+        const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+        w.push("(d.title LIKE ? ESCAPE '\\' OR d.markdown_content LIKE ? ESCAPE '\\')");
+        p.push(like, like);
+      }
+      const whereSql = w.length ? "WHERE " + w.join(" AND ") : "";
+      const trow = await db.prepare(`SELECT COUNT(*) c FROM ${from} ${whereSql}`).bind(...p).first();
+      const rows = await db
+        .prepare(
+          `SELECT d.id, d.title, d.document_type, d.folder_id, d.status, d.is_pinned,
+                  d.tags, d.version, d.word_count, d.created_at, d.updated_at,
+                  d.publish_state, d.slug, d.excerpt, d.published_at, d.sync_state
+           FROM ${from} ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`
+        )
+        .bind(...p, perPage, (page - 1) * perPage)
+        .all();
+      return { total: trow.c || 0, rows: rows.results || [] };
+    };
+    let out;
     try {
-      const trow = await db.prepare(`SELECT COUNT(*) c FROM ${fromSql} ${whereSql}`).bind(...params).first();
-      total = trow.c || 0;
-    } catch {
-      return err("search_failed", 400, "search_failed");
+      out = await runList(true);
+    } catch (e) {
+      if (!q) throw e;
+      try {
+        out = await runList(false);
+      } catch {
+        return err("search_failed", 400, "search_failed");
+      }
     }
-    const rows = await db
-      .prepare(
-        `SELECT d.id, d.title, d.document_type, d.folder_id, d.status, d.is_pinned,
-                d.tags, d.version, d.word_count, d.created_at, d.updated_at,
-                d.publish_state, d.slug, d.excerpt, d.published_at, d.sync_state, d.cover_image
-         FROM ${fromSql} ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`
-      )
-      .bind(...params, perPage, (page - 1) * perPage)
-      .all();
     return json({
       success: true,
-      total,
+      total: out.total,
       page,
       per_page: perPage,
-      documents: (rows.results || []).map(docRow),
+      documents: out.rows.map(docRow),
     });
   }
 
@@ -764,9 +833,9 @@ async function handleDocuments(req, env, seg, url) {
   if (seg.length === 3 && req.method === "POST") {
     let body;
     try {
-      body = await readJson(req);
-    } catch {
-      return err("invalid_json", 400, "invalid_json");
+      body = await readJson(req, DOC_BODY_MAX);
+    } catch (e) {
+      return bodyError(e);
     }
     const title = String(body.title || "Untitled").slice(0, 300) || "Untitled";
     const document_type = DOC_TYPES.has(body.document_type) ? body.document_type : "note";
@@ -775,7 +844,8 @@ async function handleDocuments(req, env, seg, url) {
       const f = await db.prepare("SELECT id FROM folders WHERE id = ?").bind(folder_id).first();
       if (!f) return err("folder_not_found", 404, "folder_not_found");
     }
-    const content = String(body.markdown_content || "").slice(0, 2000000);
+    const content = String(body.markdown_content || "");
+    if (byteLen(content) > MAX_DOC_BYTES) return err("content_too_large", 413, "content_too_large");
     const res = await db
       .prepare(
         `INSERT INTO documents (title, document_type, markdown_content, folder_id, tags, word_count)
@@ -789,7 +859,7 @@ async function handleDocuments(req, env, seg, url) {
     return json({ success: true, document: { ...docRow(row), markdown_content: row.markdown_content } }, 201);
   }
 
-  const id = parseInt(seg[3], 10);
+  const id = /^\d+$/.test(seg[3] || "") ? parseInt(seg[3], 10) : 0;
   if (!Number.isInteger(id) || id <= 0) return err("not_found", 404, "not_found");
 
   /* GET /api/admin/documents/:id */
@@ -803,9 +873,9 @@ async function handleDocuments(req, env, seg, url) {
   if (seg.length === 4 && req.method === "PUT") {
     let body;
     try {
-      body = await readJson(req);
-    } catch {
-      return err("invalid_json", 400, "invalid_json");
+      body = await readJson(req, DOC_BODY_MAX);
+    } catch (e) {
+      return bodyError(e);
     }
     const clientVersion = parseInt(body.version, 10);
     if (!Number.isInteger(clientVersion)) return err("version_required", 400, "version_required");
@@ -819,18 +889,32 @@ async function handleDocuments(req, env, seg, url) {
     }
     const now = utcNow();
     const title = body.title !== undefined ? String(body.title).slice(0, 300) || "Untitled" : cur.title;
-    const content = body.markdown_content !== undefined ? String(body.markdown_content).slice(0, 2000000) : cur.markdown_content;
-    const folder_id =
-      body.folder_id === null || body.folder_id === undefined
-        ? cur.folder_id
-        : /^\d+$/.test(String(body.folder_id))
-          ? parseInt(body.folder_id, 10)
-          : cur.folder_id;
-    if (body.folder_id !== undefined && body.folder_id !== null && folder_id !== cur.folder_id) {
-      const f = await db.prepare("SELECT id FROM folders WHERE id = ?").bind(folder_id).first();
-      if (!f) return err("folder_not_found", 404, "folder_not_found");
+    const content = body.markdown_content !== undefined ? String(body.markdown_content) : cur.markdown_content;
+    if (body.markdown_content !== undefined && byteLen(content) > MAX_DOC_BYTES) {
+      return err("content_too_large", 413, "content_too_large");
+    }
+    // folder_id: undefined = keep, null/"" = move OUT of any folder (the old
+    // code treated null as "keep", so a document could never leave a folder).
+    let folder_id = cur.folder_id;
+    if (body.folder_id !== undefined) {
+      if (body.folder_id === null || body.folder_id === "") {
+        folder_id = null;
+      } else if (/^\d+$/.test(String(body.folder_id))) {
+        folder_id = parseInt(body.folder_id, 10);
+        if (folder_id !== cur.folder_id) {
+          const f = await db.prepare("SELECT id FROM folders WHERE id = ?").bind(folder_id).first();
+          if (!f) return err("folder_not_found", 404, "folder_not_found");
+        }
+      } else {
+        return err("invalid_folder", 400, "validation");
+      }
     }
     const status = body.status !== undefined && DOC_STATUSES.has(body.status) ? body.status : cur.status;
+    // A published document has a live git copy: it must be unpublished before
+    // it can leave the "active" state (same rule DELETE already enforced).
+    if (status !== "active" && cur.publish_state === "published") {
+      return err("must_unpublish_first", 409, "must_unpublish_first");
+    }
     const is_pinned = body.is_pinned !== undefined ? (body.is_pinned ? 1 : 0) : cur.is_pinned;
     const tags = body.tags !== undefined ? cleanTags(body.tags) : cur.tags;
     // Publishing metadata: slug/excerpt may be edited in any state; the slug
@@ -849,39 +933,32 @@ async function handleDocuments(req, env, seg, url) {
       slug = s || null;
     }
     const excerpt = body.excerpt !== undefined ? String(body.excerpt).slice(0, 400) : cur.excerpt;
-    // Cover image: an assets key chosen in the studio, validated against the
-    // library so a stale/forged key can't break the site's <img>.
-    let cover_image = cur.cover_image ?? null;
-    if (body.cover_image !== undefined) {
-      const k = body.cover_image === null ? "" : String(body.cover_image).trim();
-      if (!k) {
-        cover_image = null;
-      } else if (!/^[0-9a-f]{32}\.(png|jpg|webp|gif)$/.test(k)) {
-        return err("invalid_cover", 400, "invalid_cover");
-      } else {
-        const a = await db.prepare("SELECT key FROM assets WHERE key = ?").bind(k).first();
-        if (!a) return err("cover_not_found", 400, "cover_not_found");
-        cover_image = k;
-      }
-    }
     // Publishing invariant: anything user-visible changing on a published
     // document makes its git copy stale.
     const sync_state =
       cur.publish_state === "published" &&
-      (content !== cur.markdown_content || title !== cur.title || tags !== cur.tags || slug !== cur.slug || excerpt !== cur.excerpt || cover_image !== (cur.cover_image ?? null))
+      (content !== cur.markdown_content || title !== cur.title || tags !== cur.tags || slug !== cur.slug || excerpt !== cur.excerpt)
         ? "dirty"
         : cur.sync_state;
     const newVersion = cur.version + 1;
+    // Baseline: the very first edit of a document keeps its previous content
+    // reachable (revisions are otherwise only written AFTER an update).
+    if (content !== cur.markdown_content && String(cur.markdown_content || "").trim()) {
+      const has = await db.prepare("SELECT 1 x FROM revisions WHERE document_id = ? LIMIT 1").bind(id).first();
+      if (!has) await maybeCreateRevision(db, cur, "auto");
+    }
     await db
       .prepare(
         `UPDATE documents SET title=?, markdown_content=?, folder_id=?, status=?,
-         is_pinned=?, tags=?, version=?, word_count=?, updated_at=?, slug=?, excerpt=?, sync_state=?, cover_image=? WHERE id=?`
+         is_pinned=?, tags=?, version=?, word_count=?, updated_at=?, slug=?, excerpt=?, sync_state=? WHERE id=?`
       )
-      .bind(title, content, folder_id, status, is_pinned, tags, newVersion, countWords(content), now, slug, excerpt, sync_state, cover_image, id)
+      .bind(title, content, folder_id, status, is_pinned, tags, newVersion, countWords(content), now, slug, excerpt, sync_state, id)
       .run();
     const updated = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
     await maybeCreateRevision(db, updated, body.manual ? "manual" : "auto");
-    await audit(db, "document_update", `id=${id} v${newVersion}`);
+    // Autosaves fire every few seconds while typing; only deliberate saves are
+    // worth an audit row (and the extra D1 write).
+    if (body.manual) await audit(db, "document_update", `id=${id} v${newVersion}`);
     return json({ success: true, version: newVersion, updated_at: now });
   }
 
@@ -916,7 +993,7 @@ async function handleDocuments(req, env, seg, url) {
         `INSERT INTO documents (title, document_type, markdown_content, folder_id, tags, word_count)
          VALUES (?, ?, ?, ?, ?, ?)`
       )
-      .bind(`${cur.title} (copy)`.slice(0, 300), cur.document_type, cur.markdown_content, cur.folder_id, cur.tags, cur.word_count)
+      .bind(`${cur.title} (کپی)`.slice(0, 300), cur.document_type, cur.markdown_content, cur.folder_id, cur.tags, cur.word_count)
       .run();
     await audit(db, "document_duplicate", `from=${id} to=${res.meta.last_row_id}`);
     return json({ success: true, id: res.meta.last_row_id }, 201);
@@ -924,12 +1001,32 @@ async function handleDocuments(req, env, seg, url) {
 
   /* POST /api/admin/documents/:id/archive | /restore */
   if (seg.length === 5 && (seg[4] === "archive" || seg[4] === "restore") && req.method === "POST") {
+    const cur = await db.prepare("SELECT status, publish_state, slug FROM documents WHERE id = ?").bind(id).first();
+    if (!cur) return err("not_found", 404, "not_found");
+    // Archiving a published document would hide it from the dashboard while its
+    // git copy stays live, with no way left to unpublish it.
+    if (seg[4] === "archive" && cur.publish_state === "published") {
+      return err("must_unpublish_first", 409, "must_unpublish_first");
+    }
     const to = seg[4] === "archive" ? "archived" : "active";
+    let slug = cur.slug;
+    let slugCleared = false;
+    // The unique-slug index ignores trashed rows, so restoring one can collide
+    // with a slug taken in the meantime (this used to surface as a bare 500).
+    if (to === "active" && cur.status === "trashed" && cur.slug) {
+      const clash = await db
+        .prepare("SELECT id FROM documents WHERE slug = ? AND status != 'trashed' AND id != ?")
+        .bind(cur.slug, id)
+        .first();
+      if (clash) {
+        slug = null;
+        slugCleared = true;
+      }
+    }
     const now = utcNow();
-    const r = await db.prepare("UPDATE documents SET status=?, updated_at=? WHERE id=?").bind(to, now, id).run();
-    if (!r.meta.changes) return err("not_found", 404, "not_found");
+    await db.prepare("UPDATE documents SET status=?, slug=?, updated_at=? WHERE id=?").bind(to, slug, now, id).run();
     await audit(db, `document_${seg[4]}`, `id=${id}`);
-    return json({ success: true, status: to });
+    return json({ success: true, status: to, ...(slugCleared ? { slug_cleared: true } : {}) });
   }
 
   /* POST /api/admin/documents/:id/publish — draft -> published (marks git sync dirty) */
@@ -937,8 +1034,8 @@ async function handleDocuments(req, env, seg, url) {
     let body;
     try {
       body = await readJson(req);
-    } catch {
-      return err("invalid_json", 400, "invalid_json");
+    } catch (e) {
+      return bodyError(e);
     }
     const cur = await db.prepare("SELECT * FROM documents WHERE id = ?").bind(id).first();
     if (!cur) return err("not_found", 404, "not_found");
@@ -1050,18 +1147,19 @@ async function handleFolders(req, env, seg) {
     const rows = await db
       .prepare(
         `SELECT f.id, f.name, f.parent_id, f.created_at,
-                (SELECT COUNT(*) FROM documents d WHERE d.folder_id = f.id AND d.status != 'trashed') AS doc_count
+                (SELECT COUNT(*) FROM documents d WHERE d.folder_id = f.id AND d.status = 'active') AS doc_count
          FROM folders f ORDER BY f.name`
       )
       .all();
-    return json({ success: true, folders: rows.results || [] });
+    const t = (await db.prepare("SELECT COUNT(*) total, COALESCE(SUM(folder_id IS NULL), 0) unfiled FROM documents WHERE status='active'").first()) || {};
+    return json({ success: true, folders: rows.results || [], totals: { all: t.total || 0, unfiled: t.unfiled || 0 } });
   }
   if (seg.length === 3 && req.method === "POST") {
     let body;
     try {
       body = await readJson(req);
-    } catch {
-      return err("invalid_json", 400, "invalid_json");
+    } catch (e) {
+      return bodyError(e);
     }
     const name = String(body.name || "").trim().slice(0, 120);
     if (!name) return err("name_required", 400, "validation");
@@ -1076,8 +1174,8 @@ async function handleFolders(req, env, seg) {
     let body;
     try {
       body = await readJson(req);
-    } catch {
-      return err("invalid_json", 400, "invalid_json");
+    } catch (e) {
+      return bodyError(e);
     }
     const name = String(body.name || "").trim().slice(0, 120);
     if (!name) return err("name_required", 400, "validation");
@@ -1129,7 +1227,7 @@ function base64ToU8(b64) {
 async function handleUpload(req, env) {
   const db = env.DB;
   const ip = clientIp(req);
-  if (!(await checkRateLimit(db, `upload:${ip}`, 200, 3600))) {
+  if (!(await checkRateLimit(db, `upload:${ip}`, 60, 3600))) {
     return err("rate_limited", 429, "rate_limited");
   }
   let form;
@@ -1145,8 +1243,9 @@ async function handleUpload(req, env) {
   if (!files.length) return err("no_files", 400, "no_files");
   if (files.length > 5) return err("too_many_files", 400, "too_many_files");
 
-  const base = req.url.split("/api/")[0];
-  const out = [];
+  // Validate EVERYTHING before storing anything, so a bad 3rd file cannot leave
+  // the first two behind as orphans.
+  const prepared = [];
   for (const file of files) {
     const size = file.size;
     if (size <= 0 || size > MAX_UPLOAD_BYTES) {
@@ -1157,19 +1256,18 @@ async function handleUpload(req, env) {
     if (!detected) {
       return err("invalid_image", 400, "invalid_image");
     }
+    prepared.push({ file, buf, detected, size });
+  }
+
+  const base = req.url.split("/api/")[0];
+  const out = [];
+  for (const { file, buf, detected, size } of prepared) {
     const key = `${randomTokenHex(16)}.${detected.ext}`;
-    // Library metadata: the file's own name by default; batch importers can
-    // override via form fields so the studio picker shows meaningful labels.
-    const assetName = String(form.get("asset_name") || file.name || "")
-      .split(/[\\/]/)
-      .pop()
-      .slice(0, 120);
-    const assetCategory = String(form.get("asset_category") || "").slice(0, 60);
     // Stored as base64 TEXT: D1 BLOB bind/read round-trips are unreliable,
     // while TEXT is deterministic. (+33% size; acceptable at this scale.)
     await db
-      .prepare("INSERT INTO assets (key, content_type, size, data, name, category) VALUES (?, ?, ?, ?, ?, ?)")
-      .bind(key, detected.mime, size, u8ToBase64(buf), assetName, assetCategory)
+      .prepare("INSERT INTO assets (key, content_type, size, data) VALUES (?, ?, ?, ?)")
+      .bind(key, detected.mime, size, u8ToBase64(buf))
       .run();
     out.push({ name: file.name, url: `${base}/api/assets/${key}`, key });
   }
@@ -1187,45 +1285,9 @@ async function handleAsset(req, env, key) {
     headers: {
       "content-type": row.content_type,
       "cache-control": "public, max-age=31536000, immutable",
+      "x-content-type-options": "nosniff",
+      "cross-origin-resource-policy": "cross-origin",
     },
-  });
-}
-
-/* GET /api/admin/assets — the studio image library (metadata only; the
- * image bytes stay behind the public /api/assets/:key route). */
-async function handleAssetsList(req, env, url) {
-  const db = env.DB;
-  const q = (url.searchParams.get("q") || "").trim().slice(0, 120);
-  const category = (url.searchParams.get("category") || "").trim().slice(0, 60);
-  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1);
-  const perPage = Math.min(100, Math.max(1, parseInt(url.searchParams.get("per_page") || "60", 10) || 60));
-  const where = [];
-  const params = [];
-  if (q) {
-    where.push("name LIKE ?");
-    params.push(`%${q.replace(/[%_]/g, "")}%`);
-  }
-  if (category) {
-    where.push("category = ?");
-    params.push(category);
-  }
-  const whereSql = where.length ? "WHERE " + where.join(" AND ") : "";
-  const t = await db.prepare(`SELECT COUNT(*) c FROM assets ${whereSql}`).bind(...params).first();
-  const rows = await db
-    .prepare(
-      `SELECT key, name, category, content_type, size, created_at FROM assets ${whereSql} ORDER BY created_at DESC, key DESC LIMIT ? OFFSET ?`
-    )
-    .bind(...params, perPage, (page - 1) * perPage)
-    .all();
-  const cats = await db.prepare("SELECT DISTINCT category FROM assets WHERE category != '' ORDER BY category").all();
-  const base = req.url.split("/api/")[0];
-  return json({
-    success: true,
-    total: t.c || 0,
-    page,
-    per_page: perPage,
-    categories: (cats.results || []).map((r) => r.category),
-    assets: (rows.results || []).map((r) => ({ ...r, url: `${base}/api/assets/${r.key}` })),
   });
 }
 
@@ -1251,11 +1313,15 @@ export default {
 
       /* admin */
       if (path.startsWith("/api/admin/")) {
-        const ip = clientIp(req);
-        if (!(await checkRateLimit(env.DB, `admin:${ip}`, 120, 60))) {
-          return cors(err("rate_limited", 429, "rate_limited"));
-        }
         if (!requireAdmin(req, env)) {
+          // Only FAILED attempts are rate-limited. The old per-IP limiter ran
+          // before auth and counted every request, so on a shared/NAT address
+          // (very common on Iranian mobile networks) strangers could lock the
+          // owner out, and every dashboard call cost an extra D1 write.
+          const ip = clientIp(req);
+          if (!(await checkRateLimit(env.DB, `admin_fail:${ip}`, 30, 600))) {
+            return cors(err("rate_limited", 429, "rate_limited"));
+          }
           await audit(env.DB, "admin_auth_failed", ip);
           return cors(err("unauthorized", 401, "unauthorized"));
         }
@@ -1263,10 +1329,14 @@ export default {
       }
 
       if (path === "/" || path === "/api" || path === "/api/") {
-        return cors(json({ success: true, service: "ahura-api", version: "1.0.0" }));
+        return cors(json({ success: true, service: "ahura-api", version: VERSION }));
       }
       return cors(err("not_found", 404, "not_found"));
     } catch (e) {
+      if (e instanceof HttpError) return cors(err(e.code, e.status, e.code));
+      const msg = String((e && e.message) || e);
+      if (msg.includes("UNIQUE") && msg.includes("slug")) return cors(err("slug_taken", 409, "slug_taken"));
+      console.error("unhandled", req.method, path, msg);
       return cors(err("internal_error", 500));
     }
   },
@@ -1278,6 +1348,8 @@ export default {
     await db.prepare("DELETE FROM email_tokens WHERE used_at IS NOT NULL AND used_at < datetime('now','-30 days')").run();
     await db.prepare("DELETE FROM email_tokens WHERE used_at IS NULL AND expires_at < datetime('now','-7 days')").run();
     await db.prepare("DELETE FROM rate_limits WHERE window_start < ?").bind(Math.floor(Date.now() / 1000) - 86400).run();
+    // audit_log grows with every admin action; keep 90 days.
+    await db.prepare("DELETE FROM audit_log WHERE created_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-90 days')").run();
     await audit(db, "scheduled_cleanup", now);
   },
 };
@@ -1295,15 +1367,21 @@ async function handleAdmin(req, env, path, url) {
   if (seg.length === 3 && seg[2] === "health" && req.method === "GET") {
     const provider = mailProvider(env);
     const tables = {};
-    for (const t of ["subscribers", "email_tokens", "campaigns", "analytics_events", "audit_log"]) {
+    for (const t of [
+      "subscribers", "email_tokens", "campaigns", "analytics_events", "audit_log",
+      "documents", "folders", "revisions", "assets",
+    ]) {
       tables[t] = ((await db.prepare(`SELECT COUNT(*) c FROM ${t}`).first()).c || 0);
     }
+    const assetBytes = ((await db.prepare("SELECT COALESCE(SUM(size), 0) b FROM assets").first()) || {}).b || 0;
     return json({
       success: true,
       health: {
         provider: provider.name,
         email_sending: provider.canSend,
         tables,
+        storage: { assets_bytes: assetBytes },
+        version: VERSION,
         time: utcNow(),
       },
     });
@@ -1385,8 +1463,8 @@ async function handleAdmin(req, env, path, url) {
       let body;
       try {
         body = await readJson(req);
-      } catch {
-        return err("invalid_json", 400, "invalid_json");
+      } catch (e) {
+        return bodyError(e);
       }
       const title = String(body.title || "").slice(0, 200);
       const subject = String(body.subject || "").slice(0, 200);
@@ -1404,12 +1482,16 @@ async function handleAdmin(req, env, path, url) {
         let body;
         try {
           body = await readJson(req);
-        } catch {
-          return err("invalid_json", 400, "invalid_json");
+        } catch (e) {
+          return bodyError(e);
         }
         const cur = await db.prepare("SELECT status FROM campaigns WHERE id = ?").bind(id).first();
         if (!cur) return err("not_found", 404, "not_found");
         if (cur.status !== "draft") return err("only_drafts_editable", 409, "invalid_state");
+        // Same rule as create: an edit must not be able to blank title/subject.
+        if (!String(body.title || "").trim() || !String(body.subject || "").trim()) {
+          return err("title_and_subject_required", 400, "validation");
+        }
         const now = utcNow();
         await db
           .prepare("UPDATE campaigns SET title=?, subject=?, body_html=?, body_text=?, updated_at=? WHERE id=?")
@@ -1423,6 +1505,14 @@ async function handleAdmin(req, env, path, url) {
           )
           .run();
         await audit(db, "campaign_update", `id=${id}`);
+        return json({ success: true });
+      }
+      if (seg.length === 4 && req.method === "DELETE") {
+        const cur = await db.prepare("SELECT status FROM campaigns WHERE id = ?").bind(id).first();
+        if (!cur) return err("not_found", 404, "not_found");
+        if (cur.status !== "draft") return err("only_drafts_deletable", 409, "invalid_state");
+        await db.prepare("DELETE FROM campaigns WHERE id = ?").bind(id).run();
+        await audit(db, "campaign_delete", `id=${id}`);
         return json({ success: true });
       }
       if (seg.length === 5 && seg[4] === "test" && req.method === "POST") {
@@ -1441,6 +1531,83 @@ async function handleAdmin(req, env, path, url) {
     return err("not_found", 404, "not_found");
   }
 
+  /* GET /api/admin/audit?limit=&before= — recent admin activity */
+  if (seg.length === 3 && seg[2] === "audit" && req.method === "GET") {
+    const limit = Math.min(200, Math.max(10, parseInt(url.searchParams.get("limit") || "50", 10) || 50));
+    const before = parseInt(url.searchParams.get("before") || "0", 10) || 0;
+    const rows = await db
+      .prepare(
+        `SELECT id, action, detail, created_at FROM audit_log
+         ${before ? "WHERE id < ?" : ""} ORDER BY id DESC LIMIT ?`
+      )
+      .bind(...(before ? [before] : []), limit)
+      .all();
+    const list = rows.results || [];
+    return json({ success: true, entries: list, next_before: list.length === limit ? list[list.length - 1].id : null });
+  }
+
+  /* media library: GET /api/admin/assets , DELETE /api/admin/assets/:key */
+  if (seg[2] === "assets") {
+    if (seg.length === 3 && req.method === "GET") {
+      const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1);
+      const perPage = 24;
+      const total = ((await db.prepare("SELECT COUNT(*) c FROM assets").first()).c || 0);
+      const rows = await db
+        .prepare(
+          `SELECT a.key, a.content_type, a.size, a.created_at,
+                  (SELECT COUNT(*) FROM documents d WHERE d.status != 'trashed' AND instr(d.markdown_content, a.key) > 0) AS used_in
+           FROM assets a ORDER BY a.created_at DESC, a.key LIMIT ? OFFSET ?`
+        )
+        .bind(perPage, (page - 1) * perPage)
+        .all();
+      const base = url.origin;
+      return json({
+        success: true,
+        total,
+        page,
+        per_page: perPage,
+        assets: (rows.results || []).map((r) => ({ ...r, url: `${base}/api/assets/${r.key}` })),
+      });
+    }
+    if (seg.length === 4 && req.method === "DELETE") {
+      const key = seg[3];
+      if (!/^[0-9a-f]{32}\.(png|jpg|webp|gif)$/.test(key)) return err("not_found", 404, "not_found");
+      // Refuse while a live (non-trashed) document still references the image.
+      const used = await db
+        .prepare("SELECT COUNT(*) c FROM documents WHERE status != 'trashed' AND instr(markdown_content, ?) > 0")
+        .bind(key)
+        .first();
+      if ((used.c || 0) > 0 && url.searchParams.get("force") !== "1") return err("asset_in_use", 409, "asset_in_use");
+      const r = await db.prepare("DELETE FROM assets WHERE key = ?").bind(key).run();
+      if (!r.meta.changes) return err("not_found", 404, "not_found");
+      await audit(db, "asset_delete", key);
+      return json({ success: true });
+    }
+    return err("not_found", 404, "not_found");
+  }
+
+  /* GET /api/admin/export — full JSON backup of documents + folders (D1 is the only copy) */
+  if (seg.length === 3 && seg[2] === "export" && req.method === "GET") {
+    const docs = await db.prepare("SELECT * FROM documents ORDER BY id").all();
+    const folders = await db.prepare("SELECT * FROM folders ORDER BY id").all();
+    const withRevisions = url.searchParams.get("revisions") === "1";
+    const revisions = withRevisions ? await db.prepare("SELECT * FROM revisions ORDER BY id").all() : null;
+    await audit(db, "backup_export", `documents=${(docs.results || []).length}`);
+    const payload = {
+      format: "ahura-backup-v1",
+      exported_at: utcNow(),
+      documents: docs.results || [],
+      folders: folders.results || [],
+      ...(revisions ? { revisions: revisions.results || [] } : {}),
+    };
+    return new Response(JSON.stringify(payload), {
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "content-disposition": `attachment; filename="ahura-backup-${utcNow().slice(0, 10)}.json"`,
+      },
+    });
+  }
+
   /* writing studio */
   if (seg[2] === "documents") {
     return await handleDocuments(req, env, seg, url);
@@ -1450,9 +1617,6 @@ async function handleAdmin(req, env, path, url) {
   }
   if (seg[2] === "upload" && seg.length === 3 && req.method === "POST") {
     return await handleUpload(req, env);
-  }
-  if (seg[2] === "assets" && seg.length === 3 && req.method === "GET") {
-    return await handleAssetsList(req, env, url);
   }
 
   return err("not_found", 404, "not_found");

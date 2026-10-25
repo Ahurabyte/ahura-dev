@@ -3,49 +3,72 @@ import AdminShell from "../../components/admin/AdminShell.astro";
 ---
 
 <AdminShell title="آمار بازدید" page="analytics">
-  <div class="adm-row">
-    <label for="adm-days">بازه:</label>
-    <select id="adm-days" class="adm-select">
-      <option value="7">۷ روز اخیر</option>
-      <option value="30" selected>۳۰ روز اخیر</option>
-      <option value="90">۹۰ روز اخیر</option>
-    </select>
+  <div class="adm-page-head">
+    <h1>آمار بازدید</h1>
+    <div class="adm-row" style="margin:0">
+      <label for="adm-days" class="adm-muted">بازه:</label>
+      <select id="adm-days" class="adm-select">
+        <option value="7">۷ روز اخیر</option>
+        <option value="30" selected>۳۰ روز اخیر</option>
+        <option value="90">۹۰ روز اخیر</option>
+      </select>
+    </div>
   </div>
   <div id="adm-analytics"><div class="adm-loading">در حال بارگذاری...</div></div>
 
   <script is:inline>
-    /* Deferred to DOMContentLoaded: AdminShell defines window.AdminAPI in its own
-       script, which runs AFTER this page script during parsing. */
     window.addEventListener("DOMContentLoaded", function () {
-      function load(days) {
-        var A = window.AdminAPI;
-        var root = document.getElementById("adm-analytics");
-        root.innerHTML = '<div class="adm-loading">در حال بارگذاری...</div>';
-        A.api("/api/admin/analytics?days=" + days).then(function (res) {
-          var an = res.analytics;
-          var h = '<div class="adm-section"><h2>ترافیک روزانه</h2><div class="adm-card" id="adm-chart"></div></div>';
-          h += '<div class="adm-section"><h2>پربازدیدترین صفحات</h2><div class="adm-card adm-table-wrap">' + table(an.top_pages, [["path", "صفحه"], ["views", "بازدید"], ["sessions", "نشست"]]) + "</div></div>";
-          h += '<div class="adm-section"><h2>ارجاع‌دهنده‌ها</h2><div class="adm-card adm-table-wrap">' + table(an.referrers, [["ref", "دامین"], ["views", "بازدید"]]) + "</div></div>";
-          h += '<div class="adm-section"><h2>دسته‌ی دستگاه</h2><div class="adm-card adm-table-wrap">' + table(an.devices, [["device", "دستگاه"], ["views", "بازدید"]]) + "</div></div>";
-          root.innerHTML = h;
-          A.barChart(document.getElementById("adm-chart"), an.daily, "d", "views");
-        }).catch(function (e) {
-          if (e.message !== "unauthorized") root.innerHTML = '<div class="adm-error">خطا: ' + A.esc(e.message) + "</div>";
-        });
-        function table(rows, cols) {
-          if (!rows.length) return '<div class="adm-empty">داده‌ای نیست.</div>';
-          var t = '<table class="adm-table"><tr>' + cols.map(function (c) { return "<th>" + c[1] + "</th>"; }).join("") + "</tr>";
-          rows.forEach(function (r) {
-            t += "<tr>" + cols.map(function (c) {
-              var v = r[c[0]];
-              var dir = c[0] === "path" || c[0] === "ref" ? " dir='ltr' style='text-align:left'" : "";
-              return "<td" + dir + ">" + A.esc(v) + "</td>";
-            }).join("") + "</tr>";
-          });
-          return t + "</table>";
-        }
-      }
       window.AdminAPI.ready.then(function () {
+        var A = window.AdminAPI, esc = A.esc, num = A.faNum;
+        var root = document.getElementById("adm-analytics");
+        var guard = A.seq();
+
+        function delta(cur, prev) {
+          if (!prev) return "";
+          var pct = Math.round(((cur - prev) / prev) * 100);
+          if (pct === 0) return '<span class="adm-delta">بدون تغییر</span>';
+          return '<span class="adm-delta ' + (pct > 0 ? "up" : "down") + '">' + (pct > 0 ? "▲ " : "▼ ") + num(Math.abs(pct)) + "٪</span>";
+        }
+        function card(label, cur, prev) {
+          return '<div class="adm-card"><h3>' + label + '</h3><div class="num">' + num(cur) + "</div><div class=\"sub\">" + delta(cur, prev) + "</div></div>";
+        }
+        function section(t, inner) { return '<div class="adm-section"><h2>' + t + "</h2>" + inner + "</div>"; }
+
+        function load(days) {
+          var fresh = guard(); // out-of-order responses are dropped
+          root.innerHTML = '<div class="adm-loading">در حال بارگذاری...</div>';
+          A.api("/api/admin/analytics?days=" + days).then(function (res) {
+            if (!fresh()) return;
+            var an = res.analytics, t = an.totals || {}, p = an.previous || {};
+            var totalDev = an.devices.reduce(function (a, r) { return a + r.views; }, 0) || 1;
+            var h = '<div class="adm-grid">' + card("بازدید", t.views, p.views) + card("نشست", t.sessions, p.sessions) + card("بازدیدکننده‌ی یکتا", t.visitors, p.visitors) + "</div>";
+            h += '<div class="adm-muted" style="margin:-12px 0 20px;font-size:.8rem">درصدها نسبت به ' + num(days) + " روز قبل از این بازه‌اند.</div>";
+            h += section("ترافیک روزانه", '<div class="adm-card" id="adm-chart"></div>');
+            h += section("پربازدیدترین صفحات", A.table([
+              { label: "صفحه", key: "path", ltr: true },
+              { label: "بازدید", key: "views", fmt: num },
+              { label: "نشست", key: "sessions", fmt: num },
+            ], an.top_pages, { empty: "داده‌ای نیست." }));
+            h += '<div class="adm-grid-2"><div>' + section("ارجاع‌دهنده‌ها", A.table([
+              { label: "دامین", key: "ref", ltr: true },
+              { label: "بازدید", key: "views", fmt: num },
+            ], an.referrers, { empty: "داده‌ای نیست." })) + "</div><div>" + section("دسته‌ی دستگاه", A.table([
+              { label: "دستگاه", key: "device", fmt: function (v) { return A.label("device", v); } },
+              { label: "بازدید", key: "views", fmt: num },
+              { label: "سهم", html: function (r) { var pc = Math.round((r.views / totalDev) * 100); return '<div style="display:flex;align-items:center;gap:8px;min-width:90px"><div class="adm-meter" style="flex:1"><i style="width:' + pc + '%"></i></div><span>' + num(pc) + "٪</span></div>"; } },
+            ], an.devices, { empty: "داده‌ای نیست." })) + "</div></div>";
+            if (an.utm && an.utm.length) {
+              h += section("منابع UTM", A.table([
+                { label: "منبع", key: "source", ltr: true },
+                { label: "مدیوم", key: "medium", ltr: true },
+                { label: "کمپین", key: "campaign", ltr: true },
+                { label: "بازدید", key: "views", fmt: num },
+              ], an.utm));
+            }
+            root.innerHTML = h;
+            A.barChart(document.getElementById("adm-chart"), an.daily, "d", "views");
+          }).catch(function (e) { if (fresh()) A.renderError(root, e); });
+        }
         var sel = document.getElementById("adm-days");
         load(sel.value);
         sel.addEventListener("change", function () { load(sel.value); });

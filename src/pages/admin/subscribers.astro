@@ -3,105 +3,87 @@ import AdminShell from "../../components/admin/AdminShell.astro";
 ---
 
 <AdminShell title="مشترکین" page="subscribers">
+  <div class="adm-page-head"><h1>مشترکین</h1></div>
   <div class="adm-row">
-    <input id="adm-q" class="adm-input" placeholder="جستجو در ایمیل..." dir="ltr" style="text-align:left" />
-    <select id="adm-status" class="adm-select">
+    <input id="adm-q" class="adm-input" placeholder="جستجو در ایمیل..." dir="ltr" style="text-align:left" type="search" />
+    <select id="adm-status" class="adm-select" aria-label="وضعیت">
       <option value="">همه‌ی وضعیت‌ها</option>
       <option value="confirmed">تأیید شده</option>
       <option value="pending_confirmation">در انتظار تأیید</option>
       <option value="unsubscribed">لغو شده</option>
       <option value="bounced">برگشتی</option>
     </select>
-    <button id="adm-search" class="adm-btn">جستجو</button>
-    <button id="adm-export" class="adm-btn adm-btn-ghost">خروجی CSV</button>
+    <button id="adm-search" class="adm-btn" type="button">جستجو</button>
+    <button id="adm-export" class="adm-btn adm-btn-ghost" type="button">خروجی CSV</button>
   </div>
   <div id="adm-subs"><div class="adm-loading">در حال بارگذاری...</div></div>
 
   <script is:inline>
-    /* Deferred to DOMContentLoaded: AdminShell defines window.AdminAPI in its own
-       script, which runs AFTER this page script during parsing. */
     window.addEventListener("DOMContentLoaded", function () {
-      var page = 1, perPage = 20;
-      function faStatus(s) {
-        return { confirmed: "تأیید شده", pending_confirmation: "در انتظار تأیید", unsubscribed: "لغو شده", bounced: "برگشتی" }[s] || s;
-      }
-      function fmtDate(iso) {
-        if (!iso) return "—";
-        try { return new Date(iso).toLocaleDateString("fa-IR"); } catch (e) { return iso; }
-      }
-      function load() {
-        var A = window.AdminAPI;
-        var root = document.getElementById("adm-subs");
-        var q = document.getElementById("adm-q").value.trim();
-        var status = document.getElementById("adm-status").value;
-        var url = "/api/admin/subscribers?page=" + page + "&per_page=" + perPage
-          + (q ? "&q=" + encodeURIComponent(q) : "") + (status ? "&status=" + status : "");
-        root.innerHTML = '<div class="adm-loading">در حال بارگذاری...</div>';
-        A.api(url).then(function (res) {
-          var rows = res.subscribers, total = res.total;
-          var pages = Math.max(1, Math.ceil(total / perPage));
-          var h = '<div class="adm-card adm-table-wrap">';
-          if (!rows.length) {
-            h += '<div class="adm-empty">مشترکی پیدا نشد.</div>';
-          } else {
-            h += '<table class="adm-table"><tr><th>ایمیل</th><th>وضعیت</th><th>منبع</th><th>ثبت</th><th>تأیید</th><th>عملیات</th></tr>';
-            rows.forEach(function (r) {
-              h += "<tr><td dir='ltr' style='text-align:left'>" + A.esc(r.email) + '</td>'
-                + '<td><span class="adm-badge ' + r.status + '">' + faStatus(r.status) + "</span></td>"
-                + "<td>" + A.esc(r.source || "—") + "</td>"
-                + "<td>" + fmtDate(r.created_at) + "</td>"
-                + "<td>" + fmtDate(r.confirmed_at) + "</td>"
-                + '<td><div class="adm-row" style="margin:0">'
-                + (r.status !== "unsubscribed" ? '<button class="adm-btn adm-btn-ghost" data-unsub="' + r.id + '">لغو عضویت</button>' : "")
-                + ' <button class="adm-btn adm-btn-danger" data-del="' + r.id + '">حذف</button>'
-                + "</div></td></tr>";
-            });
-            h += "</table>";
-          }
-          h += "</div>";
-          h += '<div class="adm-pagination"><button class="adm-btn adm-btn-ghost" id="adm-prev" ' + (page <= 1 ? "disabled" : "") + ">قبلی</button>"
-            + "<span>صفحه‌ی " + page + " از " + pages + " (" + total + " مشترک)</span>"
-            + '<button class="adm-btn adm-btn-ghost" id="adm-next" ' + (page >= pages ? "disabled" : "") + ">بعدی</button></div>";
-          root.innerHTML = h;
-          root.querySelectorAll("[data-unsub]").forEach(function (b) {
-            b.addEventListener("click", function () {
-              if (!confirm("این مشترک لغو عضویت بشه؟")) return;
-              A.api("/api/admin/subscribers/" + b.getAttribute("data-unsub") + "/unsubscribe", { method: "POST" })
-                .then(function () { A.toast("لغو عضویت انجام شد."); load(); })
-                .catch(function (e) { A.toast("خطا: " + e.message, true); });
-            });
-          });
-          root.querySelectorAll("[data-del]").forEach(function (b) {
-            b.addEventListener("click", function () {
-              if (!confirm("رکورد این مشترک کاملاً حذف بشه؟ این عمل برگشت‌ناپذیره.")) return;
-              A.api("/api/admin/subscribers/" + b.getAttribute("data-del"), { method: "DELETE" })
-                .then(function () { A.toast("حذف شد."); load(); })
-                .catch(function (e) { A.toast("خطا: " + e.message, true); });
-            });
-          });
-          var prev = document.getElementById("adm-prev"), next = document.getElementById("adm-next");
-          if (prev) prev.addEventListener("click", function () { if (page > 1) { page--; load(); } });
-          if (next) next.addEventListener("click", function () { page++; load(); });
-        }).catch(function (e) {
-          if (e.message !== "unauthorized") root.innerHTML = '<div class="adm-error">خطا: ' + A.esc(e.message) + "</div>";
-        });
-      }
       window.AdminAPI.ready.then(function () {
-        var A = window.AdminAPI;
+        var A = window.AdminAPI, esc = A.esc;
+        var page = 1, perPage = 20;
+        var root = document.getElementById("adm-subs");
+        var guard = A.seq();
+        function qs() { return { q: document.getElementById("adm-q").value.trim(), status: document.getElementById("adm-status").value }; }
+
+        function load() {
+          var fresh = guard(), f = qs();
+          var url = "/api/admin/subscribers?page=" + page + "&per_page=" + perPage
+            + (f.q ? "&q=" + encodeURIComponent(f.q) : "") + (f.status ? "&status=" + f.status : "");
+          root.innerHTML = '<div class="adm-loading">در حال بارگذاری...</div>';
+          A.api(url).then(function (res) {
+            if (!fresh()) return;
+            var rows = res.subscribers, total = res.total;
+            var pages = Math.max(1, Math.ceil(total / perPage));
+            // deleting the last row of the last page must not strand the user on an empty page
+            if (!rows.length && page > 1) { page = pages; load(); return; }
+            var h = A.table([
+              { label: "ایمیل", key: "email", ltr: true },
+              { label: "وضعیت", html: function (r) { return '<span class="adm-badge ' + esc(r.status) + '">' + esc(A.label("sub", r.status)) + "</span>"; } },
+              { label: "منبع", key: "source" },
+              { label: "ثبت", key: "created_at", fmt: function (v) { return A.faDate(v); } },
+              { label: "تأیید", key: "confirmed_at", fmt: function (v) { return A.faDate(v); } },
+              { label: "عملیات", cls: "adm-td-actions", html: function (r) {
+                return '<div class="adm-row">'
+                  + '<button type="button" class="adm-btn adm-btn-ghost adm-btn-sm" data-copy="' + esc(r.email) + '">کپی</button>'
+                  + (r.status !== "unsubscribed" ? '<button type="button" class="adm-btn adm-btn-ghost adm-btn-sm" data-unsub="' + r.id + '">لغو عضویت</button>' : "")
+                  + '<button type="button" class="adm-btn adm-btn-danger adm-btn-sm" data-del="' + r.id + '">حذف</button></div>';
+              } },
+            ], rows, { empty: "مشترکی پیدا نشد." });
+            if (total > perPage) h += A.pager(page, pages, total, "مشترک");
+            else h += '<div class="adm-pagination"><span>' + A.faNum(total) + " مشترک</span></div>";
+            root.innerHTML = h;
+            A.bindPager(root, page, pages, function (p) { page = p; load(); });
+            root.querySelectorAll("[data-copy]").forEach(function (b) {
+              b.addEventListener("click", function () { A.copyText(b.getAttribute("data-copy")).then(function (ok) { A.toast(ok ? "ایمیل کپی شد." : "کپی نشد.", !ok); }); });
+            });
+            root.querySelectorAll("[data-unsub]").forEach(function (b) {
+              b.addEventListener("click", async function () {
+                if (!(await A.confirm("این مشترک لغو عضویت بشه؟", { okText: "لغو عضویت" }))) return;
+                try { await A.api("/api/admin/subscribers/" + b.getAttribute("data-unsub") + "/unsubscribe", { method: "POST" }); A.toast("لغو عضویت انجام شد."); load(); }
+                catch (e) { A.toast(A.errMsg(e), true); }
+              });
+            });
+            root.querySelectorAll("[data-del]").forEach(function (b) {
+              b.addEventListener("click", async function () {
+                if (!(await A.confirm("رکورد این مشترک کاملاً حذف بشه؟ این عمل برگشت‌ناپذیره.", { danger: true, okText: "حذف" }))) return;
+                try { await A.api("/api/admin/subscribers/" + b.getAttribute("data-del"), { method: "DELETE" }); A.toast("حذف شد."); load(); }
+                catch (e) { A.toast(A.errMsg(e), true); }
+              });
+            });
+          }).catch(function (e) { if (fresh()) A.renderError(root, e); });
+        }
+
         document.getElementById("adm-search").addEventListener("click", function () { page = 1; load(); });
-        document.getElementById("adm-q").addEventListener("keydown", function (e) { if (e.key === "Enter") { page = 1; load(); } });
+        document.getElementById("adm-q").addEventListener("input", A.debounce(function () { page = 1; load(); }, 350));
         document.getElementById("adm-status").addEventListener("change", function () { page = 1; load(); });
-        document.getElementById("adm-export").addEventListener("click", function () {
+        document.getElementById("adm-export").addEventListener("click", async function () {
           var status = document.getElementById("adm-status").value;
-          A.api("/api/admin/subscribers/export" + (status ? "?status=" + status : "")).then(function (res) {
-            return res.blob();
-          }).then(function (blob) {
-            var a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = "subscribers.csv";
-            a.click();
-            setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
-          }).catch(function (e) { A.toast("خطا: " + e.message, true); });
+          try {
+            var res = await A.api("/api/admin/subscribers/export" + (status ? "?status=" + status : ""), { raw: true });
+            A.download(await res.blob(), "subscribers.csv");
+          } catch (e) { A.toast(A.errMsg(e), true); }
         });
         load();
       });

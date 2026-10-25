@@ -1,67 +1,97 @@
 ---
 import AdminShell from "../../components/admin/AdminShell.astro";
+import { withBase } from "../../lib/posts";
 ---
 
 <AdminShell title="داشبورد" page="dashboard">
-  <div id="adm-dash">
-    <div class="adm-loading">در حال بارگذاری...</div>
+  <div class="adm-page-head">
+    <h1>داشبورد</h1>
+    <a class="adm-btn" href={withBase("/admin/writing/?new=1")}>＋ نوشته‌ی جدید</a>
   </div>
+  <div id="adm-dash"><div class="adm-loading">در حال بارگذاری...</div></div>
 
-  <script is:inline>
+  <script is:inline define:vars={{ writingBase: withBase("/admin/writing/"), postsBase: withBase("/admin/posts/"), draftsBase: withBase("/admin/drafts/") }}>
     /* Deferred to DOMContentLoaded: AdminShell defines window.AdminAPI in its own
        script, which runs AFTER this page script during parsing. */
     window.addEventListener("DOMContentLoaded", function () {
-      function faStatus(s) {
-        return { confirmed: "تأیید شده", pending_confirmation: "در انتظار تأیید", unsubscribed: "لغو شده", bounced: "برگشتی" }[s] || s;
-      }
-      function fmtDate(iso) {
-        if (!iso) return "—";
-        try { return new Date(iso).toLocaleDateString("fa-IR"); } catch (e) { return iso; }
-      }
       window.AdminAPI.ready.then(function () {
         var A = window.AdminAPI;
         var root = document.getElementById("adm-dash");
-        Promise.all([A.api("/api/admin/stats"), A.api("/api/admin/analytics?days=30"), A.api("/api/admin/subscribers?per_page=5")])
-          .then(function (res) {
-            var s = res[0].stats, an = res[1].analytics, subs = res[2];
-            var h = '<div class="adm-grid">'
+        var esc = A.esc, num = A.faNum;
+
+        function card(label, value, sub) {
+          return '<div class="adm-card"><h3>' + label + '</h3><div class="num">' + num(value) + "</div>" + (sub ? '<div class="sub">' + sub + "</div>" : "") + "</div>";
+        }
+        function delta(cur, prev) {
+          if (!prev) return "";
+          var pct = Math.round(((cur - prev) / prev) * 100);
+          if (pct === 0) return '<span class="adm-delta">بدون تغییر نسبت به دوره‌ی قبل</span>';
+          return '<span class="adm-delta ' + (pct > 0 ? "up" : "down") + '">' + (pct > 0 ? "▲ " : "▼ ") + num(Math.abs(pct)) + "٪ نسبت به ۳۰ روز قبل</span>";
+        }
+        function section(title, inner) { return '<div class="adm-section"><h2>' + title + "</h2>" + inner + "</div>"; }
+        function failed(what) { return '<div class="adm-card"><div class="adm-error">' + what + " بارگذاری نشد.</div></div>"; }
+        function ok(r) { return r.status === "fulfilled"; }
+
+        Promise.allSettled([
+          A.api("/api/admin/stats"),
+          A.api("/api/admin/analytics?days=30"),
+          A.api("/api/admin/subscribers?per_page=5"),
+          A.api("/api/admin/documents?status=active&per_page=5&sort=updated"),
+        ]).then(function (res) {
+          var h = "";
+          var s = ok(res[0]) ? res[0].value.stats : null;
+          var an = ok(res[1]) ? res[1].value.analytics : null;
+
+          if (s && s.docs_sync_pending > 0) {
+            h += '<div class="adm-notice">' + num(s.docs_sync_pending) + ' نوشته‌ی منتشرشده در انتظار همگام‌سازی با سایت است. <a href="' + postsBase + '">مشاهده</a></div>';
+          }
+          if (s) {
+            h += section("ترافیک",
+              '<div class="adm-grid">'
               + card("بازدید امروز", s.views_today)
               + card("بازدید ۷ روز", s.views_7d)
-              + card("بازدید ۳۰ روز", s.views_30d)
+              + card("بازدید ۳۰ روز", s.views_30d, an ? delta(an.totals.views, an.previous.views) : "")
               + card("بازدیدکننده‌ی یکتا (۳۰ روز)", s.visitors_30d, "شناسه‌ی ناشناسِ مرورگر")
               + card("نشست‌های ۳۰ روز", s.sessions_30d, "پایان نشست با ۳۰ دقیقه عدم فعالیت")
+              + "</div>");
+            h += section("محتوا و مشترکین",
+              '<div class="adm-grid">'
+              + card("نوشته‌های منتشرشده", s.docs_published, '<a href="' + postsBase + '">مشاهده</a>')
+              + card("پیش‌نویس‌ها", s.docs_drafts, '<a href="' + draftsBase + '">مشاهده</a>')
               + card("مشترکین تأییدشده", s.subscribers_confirmed)
               + card("در انتظار تأیید", s.subscribers_pending)
               + card("لغو عضویت", s.subscribers_unsubscribed)
-              + "</div>";
-            h += '<div class="adm-section"><h2>ترافیک روزانه (۳۰ روز)</h2><div class="adm-card" id="adm-chart"></div></div>';
-            h += '<div class="adm-section"><h2>پربازدیدترین صفحات</h2><div class="adm-card adm-table-wrap">' + pagesTable(an.top_pages) + "</div></div>";
-            h += '<div class="adm-section"><h2>آخرین مشترکین</h2><div class="adm-card adm-table-wrap">' + subsTable(subs.subscribers) + "</div></div>";
-            root.innerHTML = h;
-            A.barChart(document.getElementById("adm-chart"), an.daily, "d", "views");
-          })
-          .catch(function (e) {
-            if (e.message !== "unauthorized") root.innerHTML = '<div class="adm-error">خطا در بارگذاری: ' + A.esc(e.message) + "</div>";
-          });
-        function card(label, num, sub) {
-          return '<div class="adm-card"><h3>' + label + '</h3><div class="num">' + num + "</div>" + (sub ? '<div class="sub">' + sub + "</div>" : "") + "</div>";
-        }
-        function pagesTable(rows) {
-          if (!rows.length) return '<div class="adm-empty">هنوز بازدیدی ثبت نشده.</div>';
-          var t = '<table class="adm-table"><tr><th>صفحه</th><th>بازدید</th><th>نشست</th></tr>';
-          rows.slice(0, 8).forEach(function (r) {
-            t += "<tr><td dir='ltr' style='text-align:left'>" + A.esc(r.path) + "</td><td>" + r.views + "</td><td>" + r.sessions + "</td></tr>";
-          });
-          return t + "</table>";
-        }
-        function subsTable(rows) {
-          if (!rows.length) return '<div class="adm-empty">هنوز مشترکی ثبت نشده.</div>';
-          var t = '<table class="adm-table"><tr><th>ایمیل</th><th>وضعیت</th><th>تاریخ</th></tr>';
-          rows.forEach(function (r) {
-            t += "<tr><td dir='ltr' style='text-align:left'>" + A.esc(r.email) + '</td><td><span class="adm-badge ' + r.status + '">' + faStatus(r.status) + "</span></td><td>" + fmtDate(r.created_at) + "</td></tr>";
-          });
-          return t + "</table>";
-        }
+              + "</div>");
+          } else {
+            h += section("آمار", failed("آمار"));
+          }
+
+          h += section("ترافیک روزانه (۳۰ روز)", '<div class="adm-card" id="adm-chart"></div>');
+
+          var docs = ok(res[3]) ? res[3].value.documents : null;
+          h += '<div class="adm-grid-2">';
+          h += '<div class="adm-section"><h2>آخرین نوشته‌ها</h2>' + (docs ? A.table([
+            { label: "عنوان", html: function (r) { return '<a href="' + writingBase + "?doc=" + r.id + '">' + (esc(r.title) || "بدون عنوان") + "</a>"; } },
+            { label: "وضعیت", html: function (r) { return r.publish_state === "published" ? '<span class="adm-badge published">منتشرشده</span>' : '<span class="adm-badge draft">پیش‌نویس</span>'; } },
+            { label: "تغییر", fmt: function (v) { return A.faDate(v); }, key: "updated_at" },
+          ], docs, { empty: "هنوز سندی نیست." }) : failed("نوشته‌ها")) + "</div>";
+          h += '<div class="adm-section"><h2>پربازدیدترین صفحات</h2>' + (an ? A.table([
+            { label: "صفحه", key: "path", ltr: true },
+            { label: "بازدید", key: "views", fmt: function (v) { return num(v); } },
+          ], an.top_pages.slice(0, 6), { empty: "هنوز بازدیدی ثبت نشده." }) : failed("آمار صفحات")) + "</div>";
+          h += "</div>";
+
+          var subs = ok(res[2]) ? res[2].value.subscribers : null;
+          h += section("آخرین مشترکین", subs ? A.table([
+            { label: "ایمیل", key: "email", ltr: true },
+            { label: "وضعیت", html: function (r) { return '<span class="adm-badge ' + esc(r.status) + '">' + esc(A.label("sub", r.status)) + "</span>"; } },
+            { label: "تاریخ", key: "created_at", fmt: function (v) { return A.faDate(v); } },
+          ], subs, { empty: "هنوز مشترکی ثبت نشده." }) : failed("مشترکین"));
+
+          root.innerHTML = h;
+          if (an) A.barChart(document.getElementById("adm-chart"), an.daily, "d", "views");
+          else document.getElementById("adm-chart").innerHTML = '<div class="adm-error">نمودار بارگذاری نشد.</div>';
+        });
       });
     });
   </script>
