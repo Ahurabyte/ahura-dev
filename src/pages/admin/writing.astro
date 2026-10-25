@@ -323,17 +323,37 @@ import AdminShell from "../../components/admin/AdminShell.astro";
     .st-welcome[hidden] { display: none; }
     .st-welcome h2 { font-size: 1.6rem; margin-bottom: 8px; }
 
-    /* Vditor: RTL content for Persian, LTR for code/toolbar */
+    /* Vditor: per-paragraph direction, not a blanket RTL.
+       Root cause of the broken left/right alignment: every preview
+       paragraph was forced to direction:rtl + text-align:right, so an
+       English paragraph could never sit left, and the editor inherited
+       the same blanket direction. unicode-bidi:plaintext makes each
+       block follow its own first strong character (Persian -> right,
+       English/Latin -> left) and text-align:start follows that side.
+       This survives save/reload/publish because it is derived from the
+       text itself, not from a DOM attribute — Vditor drops a manually
+       set dir attribute when it converts back to Markdown (verified
+       against Vditor 4.0.1), so there is no per-paragraph button that
+       could honestly persist. Code stays LTR below. */
     .st-vditor .vditor-wysiwyg, .st-vditor .vditor-ir { direction: rtl; }
+    .st-vditor .vditor-wysiwyg pre > p, .st-vditor .vditor-wysiwyg pre > h1,
+    .st-vditor .vditor-wysiwyg pre > h2, .st-vditor .vditor-wysiwyg pre > h3,
+    .st-vditor .vditor-wysiwyg pre > h4, .st-vditor .vditor-wysiwyg pre > h5,
+    .st-vditor .vditor-wysiwyg pre > h6, .st-vditor .vditor-wysiwyg pre > blockquote,
+    .st-vditor .vditor-wysiwyg li,
+    .st-vditor .vditor-ir pre > p, .st-vditor .vditor-ir pre > h1,
+    .st-vditor .vditor-ir pre > h2, .st-vditor .vditor-ir pre > h3,
+    .st-vditor .vditor-ir pre > h4, .st-vditor .vditor-ir pre > h5,
+    .st-vditor .vditor-ir pre > h6, .st-vditor .vditor-ir pre > blockquote,
+    .st-vditor .vditor-ir li, .st-vditor .vditor-ir__node,
+    .st-vditor .vditor-preview p, .st-vditor .vditor-preview li,
+    .st-vditor .vditor-preview blockquote, .st-vditor .vditor-preview h1,
+    .st-vditor .vditor-preview h2, .st-vditor .vditor-preview h3,
+    .st-vditor .vditor-preview h4, .st-vditor .vditor-preview h5,
+    .st-vditor .vditor-preview h6 { unicode-bidi: plaintext; text-align: start; }
     .st-vditor .vditor-wysiwyg pre, .st-vditor .vditor-ir pre,
-    .st-vditor .vditor-sv, .st-vditor .vditor-preview { direction: ltr; }
-    .st-vditor .vditor-preview { text-align: start; }
-    .st-vditor .vditor-preview [dir="rtl"], .st-vditor .vditor-preview p,
-    .st-vditor .vditor-preview li, .st-vditor .vditor-preview blockquote,
-    .st-vditor .vditor-preview h1, .st-vditor .vditor-preview h2,
-    .st-vditor .vditor-preview h3, .st-vditor .vditor-preview h4,
-    .st-vditor .vditor-preview h5, .st-vditor .vditor-preview h6 { direction: rtl; text-align: right; }
-    .st-vditor .vditor-preview pre, .st-vditor .vditor-preview code { direction: ltr; text-align: left; }
+    .st-vditor .vditor-sv { direction: ltr; }
+    .st-vditor .vditor-preview pre, .st-vditor .vditor-preview code { direction: ltr; text-align: left; unicode-bidi: normal; }
     .st-vditor .vditor-toolbar { direction: ltr; }
 
     /* focus mode */

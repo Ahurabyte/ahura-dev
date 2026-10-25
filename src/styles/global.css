@@ -400,6 +400,20 @@ body {
 .slj-prose > * + * {
   margin-top: 1.4rem;
 }
+/* Published posts: same per-paragraph direction as the studio, so an
+   English paragraph that sits left in the editor does not flip back to
+   right on the blog. Each block follows its first strong character
+   (Persian -> right, English/Latin -> left); code stays LTR. */
+.slj-prose p, .slj-prose li, .slj-prose blockquote,
+.slj-prose h2, .slj-prose h3, .slj-prose h4, .slj-prose h5, .slj-prose h6 {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+.slj-prose pre, .slj-prose code {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: normal;
+}
 .slj-prose h2 {
   font-size: 1.5rem;
   font-weight: 800;
