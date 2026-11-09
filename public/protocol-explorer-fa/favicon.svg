@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .cube { fill: #0b3aa8; stroke: #fff; }
+    /* on a dark tab bar the cube turns light so it stays visible */
+    @media (prefers-color-scheme: dark) { .cube { fill: #7aa0f5; stroke: #0b1020; } }
+  </style>
+  <g class="cube" stroke-width="1.2" stroke-linejoin="round">
+    <path d="M16 3 L28 10 L16 17 L4 10 Z" />
+    <path d="M4 10 L16 17 L16 23 L4 16 Z" />
+    <path d="M28 10 L16 17 L16 23 L28 16 Z" />
+    <path d="M4 16.6 L16 23.6 L16 29.5 L4 22.5 Z" />
+    <path d="M28 16.6 L16 23.6 L16 29.5 L28 22.5 Z" />
+  </g>
+</svg>

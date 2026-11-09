@@ -1,0 +1,39 @@
+/* Persian (fa) overrides for Protocol Explorer. Loaded after the main CSS.
+   The app's own [dir=rtl] rules (10 rules in index-*.css) already mirror chevrons,
+   the drawer, menus and palette markers; this file only adds: the Persian font,
+   and mixed-direction safeguards. Diagram geometry and animation are untouched. */
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('./fonts/vazirmatn-arabic.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  /* Arabic/Persian blocks only: Latin letters, digits and code keep rendering
+     in the app's Iosevka stack, so technical text stays monospace Latin. */
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF,
+    U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('./fonts/vazirmatn-latin.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Persian-first font stack when the document language is fa. Iosevka stays
+   second so English/technical text renders exactly as in the original. */
+html[lang="fa"] body {
+  font-family: 'Vazirmatn', Iosevka, ui-monospace, monospace;
+  line-height: 1.9;
+}
+/* Mixed-direction safeguards: code, hex dumps, addresses and URLs stay LTR
+   and isolated, so they never visually reverse inside Persian sentences. */
+html[lang="fa"] .ins-hex,
+html[lang="fa"] code,
+html[lang="fa"] .mono {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
