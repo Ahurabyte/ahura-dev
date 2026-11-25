@@ -99,11 +99,11 @@ function allowedOrigins(env) {
     .map((s) => s.trim())
     .filter(Boolean);
   if (fromEnv.length > 0) return fromEnv;
-  return ["https://ahurabyte.github.io"];
+  return ["https://ahuracode.github.io"];
 }
 
 function siteUrl(env) {
-  return env.SITE_URL || "https://ahurabyte.github.io/ahura-dev";
+  return env.SITE_URL || "https://ahuracode.github.io/ahura-dev";
 }
 
 function emailProvider(env) {

@@ -103,8 +103,8 @@ Vars (in `wrangler.toml`, safe to commit):
 
 | Var            | Value                                    |
 | -------------- | ---------------------------------------- |
-| SITE_ORIGIN    | `https://ahurabyte.github.io` (CORS allowlist, comma-separated) |
-| SITE_URL       | `https://ahurabyte.github.io/ahura-dev`   |
+| SITE_ORIGIN    | `https://ahuracode.github.io` (CORS allowlist, comma-separated) |
+| SITE_URL       | `https://ahuracode.github.io/ahura-dev`   |
 | EMAIL_PROVIDER | `none`                                   |
 
 Secrets (via `wrangler secret put`, never committed):
