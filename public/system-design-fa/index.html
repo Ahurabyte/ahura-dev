@@ -91,6 +91,7 @@ h1.lesson-title{font-size:29px;font-weight:900;margin:6px 0 4px;line-height:1.35
 .metrics{display:grid;gap:10px;margin-bottom:14px;direction:ltr}
 .metrics.c5{grid-template-columns:repeat(5,116px);justify-content:start}
 .metrics.c4{grid-template-columns:repeat(4,132px);justify-content:start}
+.metrics.c5 .metric .mlabel{font-size:9.5px;letter-spacing:.3px}
 .metric{background:var(--card);border:1.5px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:7px 12px 5px;min-width:0;min-height:55px}
 .metric .mlabel{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.6px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:left}
 .metric .mval{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;line-height:1.3;direction:ltr;text-align:left}
@@ -202,6 +203,8 @@ svg .fa{font-family:'Vazirmatn',sans-serif}
 .pill-bg{fill:var(--sheet);stroke:var(--ink);stroke-width:2.5}
 .panel{animation:panelIn .55s ease both}
 @keyframes panelIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+.stage-card svg{animation:stageIn .45s ease both}
+@keyframes stageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .node-in{animation:nodeIn 1.05s ease both}
 @keyframes nodeIn{from{opacity:.15}to{opacity:1}}
 html[data-theme="dark"] .pill-bg{fill:#2e2a24}
@@ -210,7 +213,7 @@ html[data-theme="dark"] .pill-bg{fill:#2e2a24}
 .dash-line{stroke:var(--muted);stroke-width:1.6;stroke-dasharray:5 5;fill:none}
 @media (prefers-reduced-motion: reduce){
   .tb-fill{transition:none}
-  .panel,.node-in{animation:none}
+  .panel,.node-in,.stage-card svg{animation:none}
 }
 
 /* ---------- responsive ---------- */
@@ -239,11 +242,27 @@ html[data-theme="dark"] .pill-bg{fill:#2e2a24}
   .lesson-nav a{max-width:100%;width:100%}
   .lesson-nav a.next-l{text-align:start}
 }
+@media (max-width:860px){
+  .circles{flex-wrap:wrap;justify-content:flex-start;row-gap:14px}
+  .citem{flex:0 0 20%}
+  .citem .clabel{max-width:78px}
+  .strip-top{row-gap:5px}
+}
 @media (max-width:640px){
+  header.top{gap:8px;padding:0 10px}
+  main{padding:16px 10px 56px}
   .metrics.c5{grid-template-columns:repeat(2,1fr)}
+  .metrics.c5 .metric:last-child{grid-column:1/-1}
   .metric .mlabel{font-size:9px;letter-spacing:.2px;white-space:normal}
   .metric .mval{font-size:21px}
   .search-btn kbd{display:none}
+  .stage-card{padding:8px}
+  .strip-card{padding:12px 10px}
+  .pcard{padding:12px 13px}
+  .controls .btn{flex:1 1 40%;justify-content:center;padding:7px 8px}
+  h1.lesson-title{font-size:22px}
+  .lesson-summary{font-size:14.5px}
+  .citem .clabel{font-size:10.5px}
 }
 </style>
 </head>
@@ -525,8 +544,9 @@ var DETAILS={
 var C_REQ="#e07b2a", C_RES="#4d9e57", C_HS="#8fce6e";
 function dots(pid,color,n,dur,r){
   var out="",i,b;
+  var rr=r||(window.innerWidth<700?9.5:6.5);
   for(i=0;i<n;i++){ b=(i*dur/n).toFixed(2);
-    out+='<circle r="'+(r||6.5)+'" fill="'+color+'" stroke="var(--ink)" stroke-width="1.8"><animateMotion dur="'+dur+'s" begin="'+b+'s" repeatCount="indefinite"><mpath href="#'+pid+'"/></animateMotion></circle>';
+    out+='<circle r="'+rr+'" fill="'+color+'" stroke="var(--ink)" stroke-width="1.8"><animateMotion dur="'+dur+'s" begin="'+b+'s" repeatCount="indefinite"><mpath href="#'+pid+'"/></animateMotion></circle>';
   } return out;
 }
 function iconGlobe(x,y){
@@ -993,12 +1013,24 @@ function applyPlayState(){
 function togglePlay(){
   var l=bySlug[state.slug], det=DETAILS[l.slug];
   if(!det) return;
-  playing=!playing; updatePlayBtn(); applyPlayState();
+  playing=!playing; updatePlayBtn(); schedule();
 }
 function stopTimer(){ if(timer){ clearTimeout(timer); timer=null; } }
+var STEP_MS=7000;
 function schedule(){
-  /* no auto-advance: steps never move on their own; Pause only freezes the moving dots */
+  /* while playing, steps advance on their own every STEP_MS; Pause stops both the timer and the moving dots */
   stopTimer(); applyPlayState();
+  if(!playing||reduced) return;
+  var l=bySlug[state.slug];
+  if(!l||!DETAILS[l.slug]) return;
+  timer=setTimeout(function(){
+    timer=null;
+    if(document.hidden){ schedule(); return; }
+    var cl=bySlug[state.slug], cd=cl?DETAILS[cl.slug]:null;
+    if(!cd) return;
+    if(state.step<cd.steps.length||LESSONS[cl.idx+1]){ nextStep(); }
+    else { playing=false; updatePlayBtn(); applyPlayState(); }
+  },STEP_MS);
 }
 function route(){
   var m=location.hash.match(/^#\/([a-z0-9-]+)(?:\/(\d+))?/);
