@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="fa" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>System Design — دوره‌ی تعاملی</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --paper:#f4ebe0; --sheet:#f9f2e8; --card:#f8f0e6; --ink:#1d1b18; --muted:#6f6961;
+  --line:#ddd3c5; --green:#cfe3b2; --green-2:#b2d491; --green-3:#7fc278; --btn:#bfe3a8;
+  --violet:#e7ddf5; --orange:#fcdcbd; --mint:#dff0de; --rust:#d0683a; --amber-bg:#f7e3ae;
+  --dns:#f2c230; --server:#5b8fd6; --db:#9b7ed9; --req:#e07b2a; --res:#4d9e57; --hs:#a5dd8e;
+  --radius:12px; --shadow:1.5px 2.5px 0 var(--ink);
+  color-scheme:light;
+}
+html[data-theme="dark"]{
+  --paper:#211e1a; --sheet:#28241f; --card:#26231e; --ink:#efe6d6; --muted:#a3998b;
+  --line:#342f28; --green:#3f4c2b; --green-2:#55663a; --green-3:#7fc278; --btn:#46582e;
+  --violet:#3a3350; --orange:#4d3a24; --mint:#2c4030; --amber-bg:#4d3d1e;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Vazirmatn',system-ui,sans-serif;font-size:15.5px;line-height:1.75;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace}
+button{font-family:inherit;cursor:pointer;color:inherit}
+a{color:inherit}
+::selection{background:var(--green-2)}
+
+/* ---------- header ---------- */
+header.top{position:fixed;top:0;right:0;left:0;height:58px;z-index:60;display:flex;align-items:center;gap:12px;padding:0 14px;background:var(--sheet);border-bottom:1.5px solid var(--line)}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0}
+.logo-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5px;width:22px;height:22px}
+.logo-grid i{border:1.5px solid var(--ink);border-radius:4px;background:var(--sheet)}
+.logo-grid i.g{background:var(--green-3)}
+.logo-name{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:16.5px;letter-spacing:-.3px;white-space:nowrap}
+nav.tabs{display:flex;gap:4px;margin-inline-start:8px}
+nav.tabs button{background:transparent;border:1.5px solid transparent;border-radius:9px;padding:5px 13px;font-size:14px;font-weight:700;min-height:36px}
+nav.tabs button:hover{border-color:var(--line)}
+nav.tabs button.active{background:var(--green);border-color:var(--ink);box-shadow:1.5px 2px 0 var(--ink)}
+.head-spacer{flex:1}
+.search-btn{display:flex;align-items:center;gap:9px;background:var(--card);border:1.5px solid var(--ink);border-radius:10px;padding:5px 12px;font-size:13px;color:var(--muted);min-height:38px;box-shadow:1.5px 2px 0 var(--ink)}
+.search-btn:hover{background:var(--sheet)}
+.search-btn kbd{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--sheet);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--ink);direction:ltr}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--card);border:1.5px solid var(--ink);border-radius:10px;min-width:38px;min-height:38px;padding:5px 10px;font-size:13px;font-weight:700;box-shadow:1.5px 2px 0 var(--ink)}
+.icon-btn:active,.search-btn:active{transform:translate(1px,1.5px);box-shadow:.5px 1px 0 var(--ink)}
+.credit{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.credit a{color:var(--ink);font-weight:700;text-decoration:none}
+.credit a:hover{text-decoration:underline}
+#burger{display:none}
+
+/* ---------- layout ---------- */
+.shell{display:grid;grid-template-columns:minmax(0,1fr) 302px;max-width:1560px;margin:0 auto;padding-top:58px}
+main{grid-column:1;padding:22px 26px 70px;min-width:0}
+aside.side{grid-column:2;border-inline-start:1.5px solid var(--line);background:var(--sheet);position:sticky;top:58px;height:calc(100vh - 58px);height:calc(100dvh - 58px);overflow-y:auto;padding:16px 14px 40px}
+.side-head{display:flex;align-items:baseline;justify-content:space-between;padding:2px 6px 8px}
+.side-head h2{margin:0;font-size:17px;font-weight:900}
+.progress-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.4px}
+.progress-label b{color:var(--ink)}
+.progress-bar{height:6px;border:1.5px solid var(--ink);border-radius:99px;background:var(--card);overflow:hidden;margin:0 6px 14px}
+.progress-bar i{display:block;height:100%;background:var(--green-3);transition:width .5s ease}
+.mod{margin-bottom:16px}
+.mod-head{display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:13.5px;font-weight:800}
+.mod-head .num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+.mod-head .dot{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--ink);flex-shrink:0}
+.lesson-link{display:flex;align-items:center;gap:9px;width:100%;text-align:start;background:transparent;border:1.5px solid transparent;border-radius:9px;padding:6px 8px;font-size:13.5px;line-height:1.5;min-height:38px}
+.lesson-link:hover{background:var(--card)}
+.lesson-link .lnum{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);width:20px;flex-shrink:0;text-align:center}
+.lesson-link .lt{flex:1}
+.lesson-link .seen{width:7px;height:7px;border-radius:50%;background:var(--green-3);flex-shrink:0;opacity:0}
+.lesson-link.visited .seen{opacity:1}
+.lesson-link.active{background:var(--green);border-color:var(--ink);box-shadow:1.5px 2px 0 var(--ink);font-weight:700}
+.lesson-link.active .lnum{color:var(--ink)}
+
+/* ---------- lesson ---------- */
+.kicker{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.kicker .fa-part{font-family:'Vazirmatn',sans-serif;font-size:12.5px}
+.en3{font-family:'JetBrains Mono',monospace;letter-spacing:.8px}
+.sec-label{margin:0 0 7px;font-size:11px;color:var(--muted);font-weight:700}
+.kicker .mdot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--ink)}
+h1.lesson-title{font-size:29px;font-weight:900;margin:6px 0 4px;line-height:1.35}
+.lesson-summary{color:var(--muted);margin:0 0 12px;font-size:15.5px;max-width:70ch}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.chip{font-size:12.5px;font-weight:700;background:var(--card);border:1.5px solid var(--ink);border-radius:99px;padding:2px 12px;box-shadow:1px 1.5px 0 var(--ink)}
+.chip.level{background:var(--violet)}
+.metrics{display:grid;gap:10px;margin-bottom:14px}
+.metrics.c5{grid-template-columns:repeat(5,1fr)}
+.metrics.c4{grid-template-columns:repeat(4,1fr)}
+.metric{background:var(--card);border:1.5px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:9px 13px 7px;min-width:0}
+.metric .mlabel{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.6px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:left}
+.metric .mval{font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:800;line-height:1.3;direction:ltr;text-align:left}
+.metric .mval small{font-size:12px;font-weight:600;color:var(--muted);margin-inline-start:3px}
+.metric.total{background:var(--green)}
+.lesson-grid{display:grid;grid-template-columns:348px minmax(0,1fr);gap:16px;align-items:start}
+.stage-card{background:var(--card);border:1.5px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px;overflow:hidden}
+.stage-card svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding:10px 4px 2px;font-size:12.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--ink);display:inline-block}
+.panel{display:flex;flex-direction:column;gap:12px}
+.pcard{background:var(--sheet);border:1.5px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.pcard h3{margin:0 0 8px;font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:7px}
+.pcard h3::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--green-3);border:1.5px solid var(--ink)}
+.step-phase{display:inline-block;font-size:11.5px;font-weight:800;background:var(--orange);border:1.5px solid var(--ink);border-radius:99px;padding:0 10px;margin-bottom:8px}
+.step-head{font-size:20px;font-weight:900;margin:0 0 8px;line-height:1.45}
+.step-body p{margin:0 0 9px}
+.step-body p:last-child{margin-bottom:0}
+.step-body .en,.metric .mval,.mono-en{font-family:'JetBrains Mono',monospace}
+.callout{border:1.5px solid var(--ink);border-radius:var(--radius);padding:11px 14px;box-shadow:var(--shadow)}
+.callout .ctag{display:inline-block;font-size:11.5px;font-weight:900;background:var(--sheet);border:1.5px solid var(--ink);border-radius:99px;padding:0 10px;margin-bottom:6px}
+.callout p{margin:0}
+.callout.insight{background:var(--violet)} .callout.tip{background:var(--mint)}
+.callout.warn{background:var(--amber-bg)} .callout.next{background:var(--green)}
+.callout ul{margin:0;padding-inline-start:20px}
+.changes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.changes li{display:flex;gap:9px;align-items:flex-start;font-size:14px;line-height:1.6}
+.changes .mk{font-family:'JetBrains Mono',monospace;font-weight:800;width:21px;height:21px;flex-shrink:0;border:1.5px solid var(--ink);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;margin-top:2px}
+.changes .mk.plus{background:var(--green)} .changes .mk.tilde{background:var(--orange)} .changes .mk.minus{background:#f3b8a2}
+.learn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.learn-list button{display:flex;gap:9px;align-items:flex-start;width:100%;text-align:start;background:transparent;border:1.5px solid transparent;border-radius:9px;padding:6px 8px;font-size:13.5px;line-height:1.6;min-height:36px}
+.learn-list button:hover{background:var(--card);border-color:var(--line)}
+.learn-list .snum{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:var(--card);border:1.5px solid var(--ink);border-radius:50%;width:22px;height:22px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;margin-top:1px}
+
+/* step strip + controls */
+.strip-card{margin-top:16px;background:var(--sheet);border:1.5px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:13px 16px}
+.strip-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:11px}
+.strip-top h3{margin:0;font-size:11.5px;color:var(--muted)}
+.strip-top .step-count{font-size:12.5px;color:var(--muted)}
+.circles{display:flex;gap:7px;flex-wrap:wrap}
+.circles button{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ink);background:var(--card);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;padding:0;flex-shrink:0}
+.circles button:hover{background:var(--green)}
+.circles button.done{background:var(--green)}
+.circles button.cur{background:var(--green-3);color:#12240c;box-shadow:1.5px 2px 0 var(--ink);transform:scale(1.08)}
+html[data-theme="dark"] .circles button.cur{color:#0e1a08}
+.controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--ink);border-radius:10px;background:var(--sheet);padding:7px 18px;font-size:14.5px;font-weight:800;min-height:42px;box-shadow:var(--shadow)}
+.btn:active{transform:translate(1px,2px);box-shadow:.5px 1px 0 var(--ink)}
+.btn.primary{background:var(--btn)}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn svg{flex-shrink:0}
+.lesson-nav{display:flex;justify-content:space-between;gap:12px;margin-top:26px;flex-wrap:wrap}
+.lesson-nav a{display:block;text-decoration:none;background:var(--card);border:1.5px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:11px 16px;max-width:46%;min-height:44px}
+.lesson-nav a:hover{background:var(--green)}
+.lesson-nav .dir{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);letter-spacing:.6px}
+.lesson-nav .t{font-weight:800;font-size:14.5px}
+.lesson-nav a.next-l{margin-inline-start:auto;text-align:end}
+
+/* time bars (lesson 1 step 10) */
+.timebars{padding:8px 6px 4px}
+.timebars h4{margin:0 0 14px;font-size:11.5px;color:var(--muted)}
+.tb-row{display:grid;grid-template-columns:170px 1fr 74px;gap:12px;align-items:center;margin-bottom:12px}
+.tb-row .tl{font-family:'JetBrains Mono',monospace;font-size:12px;direction:ltr;text-align:left}
+.tb-track{height:22px;border:1.5px solid var(--ink);border-radius:7px;background:var(--sheet);overflow:hidden}
+.tb-fill{height:100%;width:0;transition:width 1s cubic-bezier(.2,.8,.25,1)}
+.tb-row .tv{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;direction:ltr;text-align:left}
+.tb-total{border-top:1.5px dashed var(--muted);padding-top:11px;font-size:14.5px}
+.tb-total b{font-family:'JetBrains Mono',monospace}
+
+/* placeholder */
+.placeholder{background:var(--card);border:1.5px dashed var(--ink);border-radius:var(--radius);padding:44px 26px;text-align:center}
+.placeholder .big{font-size:21px;font-weight:900;margin:0 0 8px}
+.placeholder p{color:var(--muted);margin:0 auto;max-width:52ch}
+.placeholder .qmark{font-family:'JetBrains Mono',monospace;font-size:44px;font-weight:800;color:var(--muted);display:block;margin-bottom:10px}
+
+/* ---------- search modal ---------- */
+.overlay{position:fixed;inset:0;background:rgba(20,16,10,.45);z-index:90;display:none;align-items:flex-start;justify-content:center;padding:9vh 14px 14px}
+.overlay.open{display:flex}
+.modal{background:var(--sheet);border:1.5px solid var(--ink);border-radius:14px;box-shadow:4px 6px 0 rgba(20,16,10,.35);width:min(620px,100%);max-height:78vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-head{padding:16px 18px 10px;border-bottom:1.5px solid var(--line)}
+.modal-head h2{margin:0 0 10px;font-size:18px;font-weight:900}
+.modal-head input{width:100%;font-family:inherit;font-size:15px;padding:10px 14px;border:1.5px solid var(--ink);border-radius:10px;background:var(--card);color:var(--ink);min-height:44px}
+.modal-head input:focus{outline:2px solid var(--green-3);outline-offset:1px}
+.modal-stats{font-size:12.5px;color:var(--muted);margin-top:9px}
+.modal-results{overflow-y:auto;padding:8px}
+.result{display:flex;gap:11px;align-items:flex-start;width:100%;text-align:start;background:transparent;border:1.5px solid transparent;border-radius:10px;padding:9px 11px;min-height:44px}
+.result:hover{background:var(--card)}
+.result.sel{background:var(--green);border-color:var(--ink)}
+.result .rn{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);background:var(--card);border:1.5px solid var(--ink);border-radius:7px;padding:1px 7px;flex-shrink:0;margin-top:2px}
+.result .rt{font-weight:800;font-size:14.5px;line-height:1.5}
+.result .rs{color:var(--muted);font-size:12.5px;line-height:1.55}
+.result .rk{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.5px}
+.no-results{padding:22px;text-align:center;color:var(--muted)}
+
+/* toast */
+.toast{position:fixed;bottom:26px;left:50%;transform:translate(-50%,20px);background:var(--ink);color:var(--paper);border-radius:11px;padding:10px 22px;font-size:14.5px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:120;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.side-backdrop{display:none}
+
+/* svg diagram bits */
+svg text{font-family:'JetBrains Mono',monospace}
+svg text.ltr{direction:ltr;unicode-bidi:isolate}
+svg .fa{font-family:'Vazirmatn',sans-serif}
+.dim{opacity:.45}
+.pill-bg{fill:var(--sheet);stroke:var(--ink);stroke-width:1.5}
+html[data-theme="dark"] .pill-bg{fill:#2e2a24}
+.ent-label{font-size:13px;font-weight:700;fill:var(--ink)}
+.ent-sub{font-size:10.5px;fill:var(--muted)}
+.dash-line{stroke:var(--muted);stroke-width:1.6;stroke-dasharray:5 5;fill:none}
+@media (prefers-reduced-motion: reduce){
+  .tb-fill{transition:none}
+}
+
+/* ---------- responsive ---------- */
+@media (max-width:1180px){
+  .lesson-grid{grid-template-columns:300px minmax(0,1fr)}
+}
+@media (max-width:1023px){
+  #burger{display:inline-flex}
+  .shell{grid-template-columns:minmax(0,1fr)}
+  main{grid-column:1;padding:18px 14px 60px}
+  aside.side{display:none;position:fixed;top:0;bottom:0;left:0;right:auto;width:302px;z-index:100;height:100dvh;border-inline-start:none;border-inline-end:1.5px solid var(--ink)}
+  aside.side.open{display:block;box-shadow:6px 0 30px rgba(0,0,0,.25);animation:slideIn .25s ease}
+  @keyframes slideIn{from{transform:translateX(-26px);opacity:.4}to{transform:translateX(0);opacity:1}}
+  .logo-name{display:none}
+  .side-backdrop{display:block;position:fixed;inset:0;background:rgba(20,16,10,.45);z-index:95;opacity:0;pointer-events:none;transition:.25s}
+  .side-backdrop.show{opacity:1;pointer-events:auto}
+  .lesson-grid{grid-template-columns:1fr}
+  .panel{order:2}.stage-wrap{order:1}
+  nav.tabs{display:none}
+  .credit{display:none}
+  .metrics.c5{grid-template-columns:repeat(3,1fr)}
+  .metrics.c4{grid-template-columns:repeat(2,1fr)}
+  .search-btn .sb-text{display:none}
+  h1.lesson-title{font-size:24px}
+  .tb-row{grid-template-columns:110px 1fr 62px}
+  .lesson-nav a{max-width:100%;width:100%}
+  .lesson-nav a.next-l{text-align:start}
+}
+@media (max-width:640px){
+  .metrics.c5{grid-template-columns:repeat(2,1fr)}
+  .metric .mlabel{font-size:9px;letter-spacing:.2px;white-space:normal}
+  .metric .mval{font-size:21px}
+  .search-btn kbd{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <button class="icon-btn" id="burger" aria-label="باز کردن فهرست درس‌ها">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+  <a class="logo" href="#/">
+    <span class="logo-grid"><i class="g"></i><i></i><i></i><i></i></span>
+    <span class="logo-name" dir="ltr">System Design</span>
+  </a>
+  <nav class="tabs" aria-label="بخش‌های سایت">
+    <button class="active" type="button">یادگیری</button>
+    <button type="button" data-soon>تمرین</button>
+    <button type="button" data-soon>آزمایشگاه طراحی</button>
+    <button type="button" data-soon>برگه‌های تقلب</button>
+  </nav>
+  <div class="head-spacer"></div>
+  <button class="search-btn" id="openSearch" type="button" aria-label="جستجوی دوره">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg>
+    <span class="sb-text">جستجو در درس‌ها و مفاهیم…</span>
+    <kbd>Ctrl+K</kbd>
+  </button>
+  <button class="icon-btn" id="langBtn" type="button">فارسی</button>
+  <button class="icon-btn" id="themeBtn" type="button" aria-label="تغییر تم تاریک و روشن">
+    <svg id="themeIconMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    <svg id="themeIconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+  </button>
+  <span class="credit" dir="ltr">designed by <a href="https://designed-to-scale.vercel.app/" target="_blank" rel="noopener">@DilumSanjaya</a></span>
+</header>
+
+<div class="shell">
+  <main id="main"></main>
+  <aside class="side" id="sidebar" aria-label="فهرست دوره"></aside>
+</div>
+<div class="side-backdrop" id="sideBackdrop"></div>
+
+<div class="overlay" id="searchOverlay" role="dialog" aria-modal="true" aria-label="جستجوی دوره">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>جستجوی دوره</h2>
+      <input id="searchInput" type="text" placeholder="جستجو در درس‌ها، مفاهیم و سیستم‌ها…" autocomplete="off" />
+      <div class="modal-stats">۴۰ درس · ۴۴۵ مرحله · ۱۹۰ مفهوم</div>
+    </div>
+    <div class="modal-results" id="searchResults"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+/* ================= data: course catalogue ================= */
+var MODULES=[
+ {n:"01",name:"مبانی",color:"#c9a86a"},
+ {n:"02",name:"مقیاس‌پذیری",color:"#7fc278"},
+ {n:"03",name:"داده و ذخیره‌سازی",color:"#9b7ed9"},
+ {n:"04",name:"ارتباطات",color:"#e08a3c"},
+ {n:"05",name:"قابلیت اطمینان",color:"#5b8fd6"},
+ {n:"06",name:"معماری",color:"#3fa8a0"},
+ {n:"07",name:"امنیت",color:"#c0528f"},
+ {n:"08",name:"انتشار",color:"#8a9a3b"},
+ {n:"09",name:"سیستم‌های کامل",color:"#8d8578"}
+];
+var L=[
+ ["request-lifecycle",0,"یک درخواست چطور سفر می‌کند",10,"مبتدی",10,"یک بارگذاری صفحه را قدم‌به‌قدم دنبال کن — و بفهم زمان واقعاً کجا می‌رود."],
+ ["latency-throughput",0,"تأخیر و توان عملیاتی",11,"مبتدی",10,"دو سؤال درباره‌ی سرعت — و چرا سرورهای شلوغ پیش از اینکه پر شوند کند می‌شوند."],
+ ["napkin-math",0,"حساب سرانگشتی",10,"مبتدی",9,"یک ایده‌ی محصول را با ریاضیاتی که روی دستمال جا می‌شود، به سرورها و ترابایت‌ها تبدیل کن."],
+ ["vertical-horizontal",1,"مقیاس عمودی در برابر افقی",11,"مبتدی",11,"یک سرور تو دارد ذوب می‌شود. یکی بزرگ‌تر می‌خری، یا چند تا از همان؟"],
+ ["load-balancing",1,"متعادل‌سازی بار",12,"مبتدی",12,"یک درِ ورودی برای چند سرور — و قوانینی برای اینکه هر درخواست به کدام سرور برسد."],
+ ["stateless",1,"سرویس‌های بی‌حالت",10,"مبتدی",10,"چرا درخواست بعدی باید روی هر سروری کار کند — و state به جایش کجا می‌رود."],
+ ["caching",1,"کشینگ",14,"مبتدی",13,"جواب‌هایی که مردم بیشتر می‌پرسند را جایی خیلی سریع‌تر از دیتابیس نگه دار."],
+ ["cdn",1,"تحویل محتوا",10,"مبتدی",10,"چیزی که همه دانلود می‌کنند را روی سرورهایی نزدیک کاربرانت کپی کن — و دیگر با سرعت نور نجنگ."],
+ ["sql-nosql",2,"SQL در برابر NoSQL",11,"مبتدی",10,"جدول‌ها، سندها یا کلیدهای ساده — هر نوع دیتابیس در چه چیزی خوب است و چه چیزی را فدا می‌کند."],
+ ["indexes",2,"ایندکس‌ها",12,"مبتدی",11,"چرا یک کوئری می‌تواند دو ثانیه یا دو میلی‌ثانیه طول بکشد."],
+ ["storage-engines",2,"موتورهای ذخیره‌سازی",14,"متوسط",13,"یک دیتابیس واقعاً با write تو چه می‌کند — و چرا بعضی برای خواندن ساخته شده‌اند و بعضی برای نوشتن."],
+ ["replication",2,"تکثیر",12,"مبتدی",11,"کپی‌های دیتابیس را روی چند ماشین نگه دار — برای خواندن بیشتر و برای بقا."],
+ ["sharding",2,"شاردینگ",11,"متوسط",9,"وقتی داده یا writeها از یک ماشین بزرگ‌تر شدند، بین چند ماشین تقسیمشان کن."],
+ ["consistent-hashing",2,"هشینگ سازگار",10,"متوسط",10,"سرور اضافه یا کم کن و فقط بخش کوچکی از داده را جابه‌جا کن."],
+ ["unique-ids",2,"شناسه‌های یکتا در مقیاس بزرگ",13,"متوسط",12,"به هر ردیف نامی بده که هیچ‌کس دیگر هرگز از آن استفاده نکند — بدون یک شمارنده که همه باید برایش صف بکشند."],
+ ["cap",2,"CAP و سازگاری",12,"متوسط",11,"وقتی شبکه جدا می‌شود، کپی‌های داده‌ات باید بین درست بودن و در دسترس بودن یکی را انتخاب کنند."],
+ ["consensus",2,"اجماع و رهبر",14,"پیشرفته",12,"چطور گروهی از سرورها روی یک رهبر و یک تاریخچه توافق می‌کنند — حتی وقتی به بعضی‌شان نمی‌شود رسید."],
+ ["transactions",2,"تراکنش‌ها و ایزولاسیون",14,"متوسط",13,"دو نفر، یک صندلی، همان یک میلی‌ثانیه. دیتابیس‌ها چطور تغییرهای هم‌زمان را درست نگه می‌دارند."],
+ ["files",2,"فایل‌ها و رسانه",14,"متوسط",13,"عکس‌ها و ویدیوها جای‌شان در دیتابیس نیست — به جایش کجا می‌روند و چطور می‌روند و برمی‌گردند."],
+ ["apis",3,"REST، RPC و GraphQL",11,"مبتدی",10,"سه راه برای اینکه برنامه‌ها از هم چیزی بخواهند — و هر کدام برای یک گوشی روی 4G چه هزینه‌ای دارد."],
+ ["queues",3,"صف‌های پیام",12,"مبتدی",11,"فوراً جواب بده، کار کند را بعداً انجام بده — و هیچ کاری را در راه گم نکن."],
+ ["pubsub",3,"Pub/Sub و رویدادها",10,"مبتدی",10,"اعلام کن که چیزی اتفاق افتاده و بگذار هر کس که اهمیت می‌دهد واکنش نشان دهد — بدون اینکه کسی منتظر بماند."],
+ ["realtime",3,"به‌روزرسانی‌های بلادرنگ",11,"مبتدی",10,"سرور چطور به تو می‌گوید چیزی اتفاق افتاده — چت، نتایج زنده، اعلان‌ها."],
+ ["redundancy",4,"افزونگی و Failover",12,"متوسط",12,"همه‌چیز بالاخره خراب می‌شود. طوری طراحی کن که هیچ خرابیِ تکی تو را از پا نیندازد."],
+ ["rate-limiting",4,"محدودیت نرخ",10,"متوسط",9,"به هر کلاینت یک بودجه‌ی منصفانه بده، تا یک اسکریپت فراری نتواند همه را از پا بیندازد."],
+ ["timeouts-retries",4,"تایم‌اوت‌ها و تلاش مجدد",11,"متوسط",11,"صدا زدن یک سرویس در حال تقلا، با امنیت: به‌موقع رها کن، با احتیاط دوباره تلاش کن و بدان کی باید دست بکشی."],
+ ["observability",4,"مشاهده‌پذیری",11,"متوسط",9,"متریک‌ها، لاگ‌ها و traceها: چطور سریع بفهمی چه چیزی خراب است، کجا و چرا."],
+ ["microservices",5,"مونولیت در برابر میکروسرویس‌ها",14,"متوسط",12,"یک کدبیس یا چند سرویس؟ هر کدام چه چیزی می‌دهد، چه چیزی هزینه دارد و چطور بینشان جابه‌جا شوی."],
+ ["service-discovery",5,"کشف سرویس",13,"متوسط",13,"سرویس‌ها چطور همدیگر را پیدا می‌کنند وقتی instanceها می‌آیند و می‌روند — و یک درِ ورودی برای همه‌ی بیرونی‌ها."],
+ ["sagas",5,"Sagaها و تراکنش‌های توزیع‌شده",13,"پیشرفته",11,"یک عمل، چند سرویس، چند دیتابیس: چطور بدون یک تراکنش بزرگ، همه‌چیز یا همه‌چیز باشد."],
+ ["batch-stream",5,"پردازش دسته‌ای و جریانی",15,"متوسط",14,"خرد کردن میلیاردها رویداد: شبانه در دسته‌های بزرگ، یا پیوسته همان‌طور که می‌رسند."],
+ ["authentication",6,"احراز هویت",13,"متوسط",12,"ثابت کنی کسی کیست — بدون اینکه دلیل لو رفتن رمز عبور او شوی."],
+ ["authorization",6,"مجوزدهی",13,"متوسط",13,"دانستن اینکه کسی کیست، نمی‌گوید چه چیزی را می‌تواند ببیند یا انجام دهد. بررسی آن، همه‌جا."],
+ ["encryption",6,"رمزنگاری و رازها",13,"متوسط",12,"حفاظت از داده روی سیم، روی دیسک، و کلیدها و رمزهایی که سرویس‌هایت استفاده می‌کنند."],
+ ["testing",7,"تست",12,"مبتدی",11,"بدانی که یک تغییر امن است، پیش از اینکه کاربرانت بفهمند — تست‌های سریع برای منطق، چند تست کند برای بقیه."],
+ ["cicd",7,"CI/CD و دیپلوی‌ها",13,"متوسط",11,"رساندن هر تغییر به پروداکشن، سریع و امن — و برگرداندنش به همان سرعت."],
+ ["hld-lld",8,"HLD و LLD",8,"مبتدی",8,"همان سیستم در دو سطح زوم: نقشه‌ی سرویس‌ها، و درون یکی از آن‌ها."],
+ ["design-url-shortener",8,"طراحی کوتاه‌کننده‌ی URL",14,"متوسط",12,"یک طراحی کامل از اول تا آخر: از یک brief یک‌خطی تا سیستمی که میلیاردها ریدایرکت سرو می‌کند."],
+ ["design-news-feed",8,"طراحی فید خبری",14,"متوسط",12,"پست‌های همه‌ی کسانی که دنبال می‌کنی، در ۲۰۰ میلی‌ثانیه — و سؤال اینکه کار را کی انجام دهی."],
+ ["design-chat",8,"طراحی سیستم چت",14,"پیشرفته",12,"بیست میلیون اتصال باز، و یک قول: هر پیام می‌رسد، به ترتیب، دقیقاً یک بار."]
+];
+var LESSONS=L.map(function(r,i){return{idx:i,slug:r[0],mod:r[1],title:r[2],mins:r[3],level:r[4],steps:r[5],summary:r[6]};});
+var bySlug={}; LESSONS.forEach(function(l){bySlug[l.slug]=l;});
+
+/* ================= lesson details (1–3, full content) ================= */
+var DETAILS={
+"request-lifecycle":{
+ metrics:[["DNS LOOKUP","ms"],["CONNECT","ms"],["REQUEST + SERVER","ms"],["DOWNLOAD","ms"],["TOTAL","ms"]],
+ legend:[["var(--req)","درخواست"],["var(--res)","پاسخ"],["var(--hs)","handshake"]],
+ learn:[["DNS چه کار می‌کند و چرا کش می‌شود",2],["چرا اتصال، رفت‌وبرگشت (round trip) هزینه دارد",3],["مسیر: مرورگر ← سرور ← دیتابیس ← برگشت",5],["زمان بارگذاری صفحه واقعاً کجا می‌رود",7],["مثال‌ها: یک کوئری کند و یک کاربر دور",9]],
+ steps:[
+  {name:"Enter را بزن",head:"کاربران می‌گویند فروشگاه کند است",phase:"مسئله",
+   body:["قبل از اینکه چیزی را سریع‌تر کنی، باید بدانی زمان کجا می‌رود. پس بیا یک بارگذاری صفحه را دنبال کنیم.","تو shop.example را تایپ می‌کنی و Enter را می‌زنی. حدود یک‌ششم ثانیه بعد صفحه ظاهر می‌شود. در این فاصله اتفاق‌های زیادی می‌افتد."],
+   callout:{t:"insight",text:"هر درخواست وب، گفت‌وگویی است میان ماشین‌ها. هر قدم هزینه‌ی زمانی دارد و این هزینه‌ها روی هم جمع می‌شوند."},
+   metrics:[null,null,null,null,null]},
+  {name:"پیدا کردن آدرس",head:"پیدا کردن آدرس (DNS)",phase:"تکنیک",
+   body:["شبکه‌ها با آدرس عددی IP مسیریابی می‌کنند، نه با نام. پس مرورگر اول از یک DNS resolver می‌پرسد: shop.example کجاست؟","جواب — 203.0.113.7 — حدود ۲۰ میلی‌ثانیه بعد برمی‌گردد."],
+   callout:{t:"tip",text:"جواب‌ها تا پایان زمان انقضایشان (TTL) کش می‌شوند. چند دقیقه‌ی بعد، بازدیدهای تکراری این مرحله را کاملاً رد می‌کنند."},
+   changes:[["+","DNS resolver"],["+","جستجو: ۲۰ میلی‌ثانیه"]],
+   metrics:[20,null,null,null,20]},
+  {name:"اتصال",head:"باز کردن یک اتصال",phase:"تکنیک",
+   body:["حالا مرورگر به 203.0.113.7 اتصال باز می‌کند. یک TCP handshake توافق می‌کند که حرف بزنند؛ یک TLS handshake رمزنگاری را راه می‌اندازد. هر کدام یک رفت‌وبرگشت (round trip) لازم دارد — رفت و برگشت.","اینجا یک رفت‌وبرگشت ۳۰ میلی‌ثانیه طول می‌کشد، پس اتصال ۶۰ میلی‌ثانیه هزینه دارد، پیش از اینکه حتی یک بایت از صفحه درخواست شود."],
+   callout:{t:"insight",text:"زمان رفت‌وبرگشت (RTT) را فاصله و شبکه تعیین می‌کنند، نه سرعت سرور تو."},
+   changes:[["+","وب‌سرور"],["~","جواب DNS کش شد"],["+","Handshake: دو رفت‌وبرگشت = ۶۰ میلی‌ثانیه"]],
+   metrics:[20,60,null,null,80]},
+  {name:"درخواست",head:"فرستادن درخواست",phase:"تکنیک",
+   body:["روی اتصال باز، مرورگر GET /products را می‌فرستد. سرور آن را تجزیه می‌کند، نشست (session) را بررسی می‌کند و کد تو را اجرا می‌کند.","این کار یک رفت‌وبرگشت دیگر به‌علاوه‌ی حدود ۱۰ میلی‌ثانیه کار سرور هزینه دارد."],
+   changes:[["+","درخواست: یک رفت‌وبرگشت + ۱۰ میلی‌ثانیه کار سرور"]],
+   metrics:[20,60,40,null,120]},
+  {name:"گرفتن داده",head:"سرور از دیتابیس می‌پرسد",phase:"تکنیک",
+   body:["محصول‌ها داخل وب‌سرور نیستند — داخل یک دیتابیس‌اند. سرور یک کوئری می‌فرستد و منتظر می‌ماند تا ردیف‌ها برگردند.","تماشا کن که یک درخواست تا انتها می‌رود و پاسخ تا انتها برمی‌گردد."],
+   callout:{t:"tip",text:"بی‌حالت (stateless) نگه داشتن سرور و گذاشتن داده در دیتابیس، همان چیزی است که بعداً اجازه می‌دهد سرورهای زیادی اجرا کنیم. (بخش مقیاس‌پذیری را ببین.)"},
+   changes:[["+","دیتابیس"],["+","کوئری: ۱۵ میلی‌ثانیه"]],
+   metrics:[20,60,55,null,135]},
+  {name:"پاسخ",head:"پاسخ به خانه برمی‌گردد",phase:"راه‌حل",
+   body:["سرور ردیف‌ها را به HTML تبدیل می‌کند و برمی‌گرداند؛ دانلودش ۲۰ میلی‌ثانیه‌ی دیگر طول می‌کشد. مرورگر صفحه را رندر می‌کند — ۱۵۵ میلی‌ثانیه بعد از اینکه Enter را زدی.","بعد متوجه تصاویر و استایل‌شیت‌های داخل صفحه می‌شود و درخواست‌های بیشتری می‌فرستد. استفاده‌ی دوباره از اتصال باز، هزینه‌ی handshake را برایشان حذف می‌کند."],
+   changes:[["+","دانلود: ۲۰ میلی‌ثانیه"],["~","صفحه بعد از ۱۵۵ میلی‌ثانیه آماده شد"]],
+   metrics:[20,60,55,20,155]},
+  {name:"فایل‌های بیشتر",head:"یک صفحه، چهل درخواست دیگر",phase:"تکنیک",
+   body:["HTML فقط شروع است. به تصاویر، استایل‌شیت‌ها، اسکریپت‌ها و فونت‌ها ارجاع می‌دهد — حدود ۴۰ فایل دیگر — و مرورگر همه را می‌گیرد.","با HTTP/1.1 قدیمی هر اتصال یک درخواست را در یک لحظه حمل می‌کرد، پس مرورگرها حدود ۶ اتصال باز می‌کردند و بقیه را در صف می‌گذاشتند. HTTP/2 همه را هم‌زمان روی همان یک اتصالی که باز کرده‌ایم می‌فرستد."],
+   callout:{t:"tip",text:"فایل‌های کمتر و کوچک‌تر هنوز کمک می‌کنند: اسکریپت‌ها را باندل کن، متن را فشرده کن (gzip/brotli)، از فرمت‌های مدرن تصویر استفاده کن و چیزی که زیر فولد است را lazy-load کن."},
+   changes:[["+","۴۰ درخواست دیگر: تصویر، CSS، JS، فونت"],["~","همه روی یک اتصال HTTP/2 مالتی‌پلکس شدند"],["~","بارگذاری کامل بعد از ۲۷۵ میلی‌ثانیه"]],
+   metrics:[20,60,55,140,275]},
+  {name:"کوئری کند",head:"مثال: یک کوئری کند",phase:"مسئله",
+   body:["یک باکس تازه‌ی «پیشنهاد برای شما» منتشر می‌شود. کوئری‌اش در هر بازدید صفحه، همه‌ی محصولات را بر اساس یک امتیاز مرتب می‌کند و حالا دیتابیس ۴۰۰ میلی‌ثانیه طول می‌کشد تا جواب دهد.","همان شبکه، همان handshakeها — اما صفحه از ۱۵۵ میلی‌ثانیه به بیش از نیم ثانیه می‌پرد. تماشا کن که درخواست‌ها پشت دیتابیس منتظر می‌مانند."],
+   callout:{t:"insight",text:"قبل از بهینه‌سازی، اندازه بگیر. اینجا شبکه مشکلی ندارد؛ راه‌حل در دیتابیس است (درس ایندکس‌ها را ببین)."},
+   changes:[["+","کوئری «پیشنهادشده» در هر صفحه"],["~","زمان دیتابیس ۱۵ ← ۴۰۰ میلی‌ثانیه"],["~","مجموع ۱۵۵ ← ۵۴۰ میلی‌ثانیه"]],
+   metrics:[20,60,440,20,540]},
+  {name:"دور دست",head:"مثال: کاربری در Sydney",phase:"مسئله",
+   body:["برگردیم به کوئری سریع. حالا همان صفحه در Sydney باز می‌شود، در حالی که سرور در Virginia است: هر رفت‌وبرگشت حدود ۲۰۰ میلی‌ثانیه طول می‌کشد، نه ۳۰.","دو رفت‌وبرگشت handshake به‌علاوه‌ی رفت‌وبرگشت درخواست، ۶۰۰ میلی‌ثانیه هزینه دارند، پیش از اینکه صفحه حتی دانلود شود. همان سرور، همان کد — بیش از ۴ برابر کندتر."],
+   callout:{t:"tip",text:"رفت‌وبرگشت‌ها را کم کن (TLS 1.3، HTTP/3، باز نگه داشتن اتصال‌ها) و محتوا را به کاربران نزدیک‌تر کن (CDNها، ریجن‌ها — ماژول ۰۲)."},
+   changes:[["~","کاربر در Sydney · ۲۰۰ میلی‌ثانیه در هر رفت‌وبرگشت"],["~","اتصال ۶۰ ← ۴۰۰ میلی‌ثانیه"],["~","مجموع ۱۵۵ ← ۷۰۵ میلی‌ثانیه"]],
+   metrics:[20,400,225,60,705]},
+  {name:"جمع‌بندی",head:"زمان کجا رفت",phase:"جمع‌بندی",
+   body:["از ۱۵۵ میلی‌ثانیه، فقط حدود ۲۵ میلی‌ثانیه‌اش کار واقعی سرور و دیتابیس بود. ۱۳۰ میلی‌ثانیه‌ی دیگر، پیام‌هایی بودند که در شبکه رفت‌وآمد می‌کردند."],
+   bullets:["DNS نام‌ها را به آدرس تبدیل می‌کند؛ جواب‌ها کش می‌شوند.","اتصال‌ها رفت‌وبرگشت هزینه دارند — دوباره ازشان استفاده کن.","کد سرور اغلب کوچک‌ترین بخش تأخیر است — مگر اینکه یک کوئری کند قاطی شود.","فاصله، هر رفت‌وبرگشت را چند برابر می‌کند."],
+   callout:{t:"next",text:"بعدی: Latency & Throughput — وقتی هزاران کاربر هم‌زمان می‌رسند، آن ۱۵۵ میلی‌ثانیه چه می‌شود."},
+   metrics:[20,60,55,20,155]}
+ ]
+},
+"latency-throughput":{
+ metrics:[["P50 LATENCY","ms"],["P99 LATENCY","ms"],["THROUGHPUT","req/s"],["UTILIZATION","%"]],
+ legend:[["var(--req)","درخواست"],["var(--res)","پاسخ"],["#e0a83c","درخواست کند"],["#b9ac97","انتظار در صف"]],
+ learn:[["تفاوت latency و throughput را بگو",1],["چرا latency نزدیک ۱۰۰٪ شلوغی منفجر می‌شود",3],["خواندن p50 در برابر p99",4],["چرا فاصله یک کف برای latency تعیین می‌کند",6],["قانون Little، دنباله‌های fan-out و batching",8]],
+ steps:[
+  {name:"دو عدد",head:"دو سؤال متفاوت",phase:"راه‌اندازی",
+   body:["Latency: یک درخواست چقدر طول می‌کشد، از وقتی از کاربر می‌رود تا جواب برگردد؟ تماشا کن یک نقطه می‌رود و برمی‌گردد.","Throughput: سیستم در هر ثانیه چند درخواست را تمام می‌کند؟ نقطه‌ها را بشمار."],
+   callout:{t:"insight",text:"به یک بزرگراه فکر کن: latency مدت رانندگی توست؛ throughput تعداد ماشین‌هایی است که در هر ساعت عبور می‌کنند. خط‌های بیشتر ماشین‌های بیشتری را عبور می‌دهند، اما در جاده‌ی خالی تو را زودتر نمی‌رسانند."},
+   metrics:[120,180,50,10]},
+  {name:"شلوغ‌تر",head:"کاربران بیشتر، همان سرور",phase:"مسئله",
+   body:["ترافیک ۷ برابر می‌شود. Throughput همراهش بالا می‌رود — سرور هنوز دارد جواب می‌دهد — و حالا ۷۰٪ شلوغ است: ۳۵۰ از حدود ۵۰۰ درخواست در ثانیه‌ای که می‌تواند انجام دهد.","اما به صف جلویش نگاه کن: درخواست‌ها گاهی باید نوبت‌شان را صبر کنند. انتظار هم latency است."],
+   callout:{t:"tip",text:"Utilization = کسری از زمانی که سرور مشغول است. در ۷۰٪، یک درخواست تازه اغلب سرور را در حال کار روی چیز دیگری پیدا می‌کند."},
+   changes:[["~","کاربران ۱٬۰۰۰ ← ۷٬۰۰۰"],["~","Throughput ۵۰ ← ۳۵۰ درخواست در ثانیه"],["+","یک صف کوتاه شکل می‌گیرد"]],
+   metrics:[160,600,350,70]},
+  {name:"چوب هاکی",head:"چوب هاکی",phase:"مسئله",
+   body:["ترافیک یک‌سوم دیگر رشد می‌کند و سرور به ۹۶٪ شلوغی می‌رسد. Throughput فقط تا ۴۸۰ درخواست در ثانیه بالا می‌رود — کمی کمتر از سقف ۵۰۰ — اما صف منفجر می‌شود و latency هفت برابر می‌شود.","درخواست‌ها با فاصله‌ی یکنواخت نمی‌رسند. با ۳۰٪ ظرفیت خالی، یک هجوم سریع جذب می‌شود؛ با ۴٪ ظرفیت خالی، هر هجوم پشت درخواست‌هایی که از قبل منتظرند تلنبار می‌شود و صف دیر خالی می‌شود."],
+   callout:{t:"warn",text:"Latency آرام آرام رشد می‌کند، بعد ناگهان. برنامه‌ریزی کن که در اوج حدود ۶۰ تا ۷۰٪ شلوغ باشی و بقیه را به‌عنوان حاشیه‌ی امن نگه دار."},
+   changes:[["~","کاربران ۷٬۰۰۰ ← ۹٬۶۰۰"],["~","Utilization ۷۰٪ ← ۹۶٪"],["~","صف ۲ ← ۶ منتظر"],["~","p99 latency ۶۰۰ میلی‌ثانیه ← ۴٫۲ ثانیه"],["~","Throughput ۳۵۰ ← ۴۸۰ درخواست در ثانیه"]],
+   metrics:[900,4200,480,96]},
+  {name:"میانگین‌ها دروغ می‌گویند",head:"میانگین‌ها درد را پنهان می‌کنند",phase:"نکته",
+   body:["برگردیم به ۷۰٪ شلوغی؛ بیشتر درخواست‌ها سریع‌اند — اما چندتایی پشت کارهای کند گیر می‌کنند. میانگین اینجا حدود ۱۸۰ میلی‌ثانیه است که سالم به نظر می‌رسد: کندهای کم‌تعداد را در خودش حل می‌کند.","پس صدک‌ها (percentile) را اندازه می‌گیریم: p50 زمانی است که نیمی از درخواست‌ها آن را می‌برند؛ p99 زمانی است که فقط ۱ درخواست از ۱۰۰ از آن می‌گذرد."],
+   callout:{t:"warn",text:"صفحه‌ای که ۳۰ درخواست می‌زند، تقریباً در ۱ بارگذاری از ۴ بار به p99 می‌خورد (۱ − 0.99³⁰ ≈ ۲۶٪). تأخیر دُم (tail) همان چیزی است که کاربران واقعاً حس می‌کنند."},
+   changes:[["~","برگشت به ۷٬۰۰۰ کاربر"],["+","گاهی درخواست‌های کند (کهربایی)"],["~","p99 latency ۴٫۲ ثانیه ← ۶۰۰ میلی‌ثانیه"]],
+   metrics:[160,600,350,70]},
+  {name:"ظرفیت اضافه کن",head:"ظرفیت اضافه کن، latency را پس بگیر",phase:"راه‌حل",
+   body:["هسته‌های سرور را دو برابر کن و همان ۳۵۰ درخواست در ثانیه حالا فقط ۳۵٪ ظرفیتش است. صف خالی می‌شود و p50 و p99 هر دو پایین می‌آیند.","Throughput تغییر نکرد — تقاضا تغییر نکرد. چیزی که تغییر کرد، مقدار حاشیه‌ی امن برای جذب هجوم‌هاست."],
+   callout:{t:"tip",text:"برای کم کردن latency زیر بار، utilization را کم کن: ظرفیت بیشتر، یا کار کمتر در هر درخواست."},
+   changes:[["~","سرور ۴ ← ۸ هسته"],["~","Utilization ۷۰٪ ← ۳۵٪"],["−","صف از بین رفت"],["~","p99 latency ۶۰۰ ← ۱۹۰ میلی‌ثانیه"]],
+   metrics:[120,190,350,35]},
+  {name:"فاصله",head:"فاصله هم latency است",phase:"نکته",
+   body:["حالا سرور را به آن سوی اقیانوس ببر. هیچ چیزش کندتر نشده، اما هر رفت‌وبرگشت بیشتر طول می‌کشد — تماشا کن نقطه‌ها سفر می‌کنند.","نور در فیبر حدود ۲۰۰ کیلومتر در هر میلی‌ثانیه طی می‌کند. نیویورک ↔ لندن حدود ۵٬۶۰۰ کیلومتر است: دست‌کم ۵۶ میلی‌ثانیه در هر رفت‌وبرگشت، در عمل نزدیک ۷۵ میلی‌ثانیه."],
+   callout:{t:"insight",text:"هیچ ارتقای سروری فیزیک را شکست نمی‌دهد. برای کم کردن این latency، داده را به کاربران نزدیک‌تر کن (کش‌ها، CDNها، ریجن‌ها)."},
+   changes:[["~","سرور جابه‌جا شد: نیویورک ← لندن"],["+","~۷۵ میلی‌ثانیه در هر رفت‌وبرگشت"],["~","p50 latency ۱۲۰ ← ۱۹۵ میلی‌ثانیه"]],
+   metrics:[195,265,350,35]},
+  {name:"در پرواز",head:"قانون Little: چقدر در پرواز است",phase:"نکته",
+   body:["یک قانون ساده عددها را به هم وصل می‌کند: درخواست‌های در پرواز = throughput × latency. با ۳۵۰ درخواست در ثانیه و ۰٫۱۲ ثانیه برای هر کدام، حدود ۴۲ درخواست در هر لحظه در حال انجام است.","هر درخواست در پرواز یک thread، یک اتصال یا مقداری حافظه را نگه می‌دارد. اگر latency به ۱ ثانیه برسد با همان throughput، ۳۵۰ درخواست در پروازند — و poolهایی که برای ۵۰ تا اندازه شده‌اند خالی می‌شوند."],
+   callout:{t:"tip",text:"از آن برای اندازه کردن thread poolها، connection poolها و تعداد workerها استفاده کن — و برای اینکه بفهمی چرا وابستگی‌های کند آن‌ها را خالی می‌کنند."},
+   changes:[["+","در پرواز ≈ ۴۲ درخواست"]],
+   metrics:[120,190,350,35]},
+  {name:"Fan-out",head:"یک درخواست، چند سرور",phase:"مسئله",
+   body:["یک صفحه‌ی جستجو به‌صورت موازی از ۱۰۰ سرور index می‌پرسد و باید منتظر کندترینشان بماند. هر سرور ۹۹٪ مواقع سریع است — اما با ۱۰۰ سرور، یک صفحه معمولاً دست‌کم به یک کند برخورد می‌کند.","۱ − 0.99¹⁰⁰ ≈ ۶۳٪ جستجوها منتظر p99 یکی می‌مانند. یک دُم نادر روی یک سرور، به حالت رایج کل صفحه تبدیل می‌شود."],
+   callout:{t:"tip",text:"دُم را با درخواست‌های hedged درست کن: اگر سروری تا p95 خودش جواب نداد، همان درخواست را به یک replica بفرست و هر کدام زودتر جواب داد را بگیر."},
+   changes:[["+","۱۰۰ سرور index (۶ تا نشان داده شده)"],["~","صفحه منتظر کندترین می‌ماند"],["~","p99 یک سرور ← حالت معمول صفحه"]],
+   metrics:[380,900,350,40]},
+  {name:"Batching",head:"Batching: throughput بیشتر، کمی latency بیشتر",phase:"بده‌بستان",
+   body:["با نوشتن رویدادهای آنالیتیکس یکی‌یکی، دیتابیس حدود ۲٬۰۰۰ insert در ثانیه انجام می‌دهد — بیشتر هزینه، سربار هر statement است.","گروهشان کن: رویدادها را تا ۵۰ میلی‌ثانیه جمع کن و ۱۰۰ ردیف را در یک statement بنویس (مربع‌های بزرگ). Throughput ۲۵ برابر می‌شود، در حالی که هر رویداد حداکثر ۵۰ میلی‌ثانیه بیشتر صبر می‌کند."],
+   callout:{t:"insight",text:"Batching latency را با throughput معاوضه می‌کند. برای لاگ‌ها، آنالیتیکس و importهای حجمی عالی است؛ برای کاربری که منتظر یک کلیک است، اشتباه است."},
+   changes:[["+","رویدادها batch شدند: ۱۰۰ ردیف / ۵۰ میلی‌ثانیه"],["~","۲٬۰۰۰ ← ۵۰٬۰۰۰ ردیف در ثانیه"],["~","هر رویداد حداکثر ۵۰ میلی‌ثانیه صبر می‌کند"]],
+   metrics:[140,210,{v:50000,u:"rows/s"},35]},
+  {name:"جمع‌بندی",head:"جمع‌بندی",phase:"جمع‌بندی",
+   body:[],
+   bullets:["Latency زمان هر درخواست است؛ throughput درخواست در ثانیه است.","Latency با نزدیک شدن utilization به ۱۰۰٪ منفجر می‌شود — حاشیه‌ی امن نگه دار.","p99 را ببین، نه میانگین را: دُم همان چیزی است که کاربران حس می‌کنند.","فاصله latency اضافه می‌کند که هیچ سروری نمی‌تواند حذفش کند.","در پرواز = throughput × latency؛ fan-out دُم‌های نادر را به حالت رایج تبدیل می‌کند."],
+   callout:{t:"next",text:"بعدی: Napkin Math — تخمین اینکه پیش از ساختن هر چیزی، به چقدر ظرفیت نیاز داری."},
+   metrics:[120,190,350,35]}
+ ]
+},
+"napkin-math":{
+ metrics:[["DAILY USERS",""],["AVG REQ/S","req/s"],["PEAK REQ/S","req/s"],["SERVERS",""],["STORAGE / YEAR","TB"]],
+ legend:[["var(--req)","درخواست"],["#d6503f","خطا / ناموفق"]],
+ learn:[["کاربران روزانه ← درخواست در ثانیه",2],["برای اوج اندازه بگیر، نه میانگین",3],["تخمین سرورها و فضای ذخیره‌سازی",5],["تخمین پهنای باند و حافظه",7],["چند عدد که ارزش حفظ کردن دارند",8]],
+ steps:[
+  {name:"سؤال",head:"یک سرور کافی است؟",phase:"مسئله",
+   body:["داری PhotoShare را طراحی می‌کنی. پیش از انتخاب هر فناوری، باید حس مقیاس را داشته باشی: این یک سرور است، یا صد تا؟","به عددهای دقیق نیاز نداری — فقط مرتبه‌ی بزرگی درست. حساب سرانگشتی در چند دقیقه تو را به آن می‌رساند."],
+   callout:{t:"insight",text:"مصاحبه‌کننده‌ها و معمارها هر دو از اینجا شروع می‌کنند: اول عددهای تقریبی، بعد طراحی متناسب با آن‌ها."},
+   metrics:["10M","?","?","?","?"]},
+  {name:"درخواست در ثانیه",head:"کاربران روزانه ← درخواست در ثانیه",phase:"تکنیک",
+   body:["از چیزی که می‌دانی شروع کن: کاربران و اینکه چقدر عمل می‌کنند. ۱۰ میلیون کاربر × ۲۰ درخواست = ۲۰۰ میلیون درخواست در روز.","یک روز ۸۶٬۴۰۰ ثانیه دارد. آن را به ۱۰۰٬۰۰۰ گرد کن — حساب سرانگشتی یعنی سریع بودن، نه دقیق بودن."],
+   callout:{t:"tip",text:"میان‌بر کاربردی: ۱ میلیون درخواست در روز ≈ ۱۲ درخواست در ثانیه."},
+   changes:[["+","بار میانگین ≈ ۲٬۳۰۰ درخواست در ثانیه"]],
+   metrics:["10M",2300,"?","?","?"]},
+  {name:"اوج",head:"برای اوج برنامه‌ریزی کن، نه میانگین",phase:"نکته",
+   body:["ترافیک صاف نیست: مردم عصرها و حوالی رویدادهای بزرگ مرور می‌کنند. یک اوج معمول، ۲ تا ۳ برابر میانگین روزانه است.","برای ۳ برابر اندازه بگیر و سرور تنها آشکارا غرق می‌شود."],
+   callout:{t:"warn",text:"سیستمی که برای بار میانگینش اندازه شده، دقیقاً در لحظه‌ای که بیشتر مردم از آن استفاده می‌کنند، از کار می‌افتد."},
+   changes:[["+","اوج ≈ ۳ × میانگین ≈ ۷٬۰۰۰ درخواست در ثانیه"],["~","یک سرور: بیش از حد بار"]],
+   metrics:["10M",2300,7000,"?","?"]},
+  {name:"سرورها",head:"چند سرور؟",phase:"راه‌حل",
+   body:["یک تست بار نشان می‌دهد یک سرور حدود ۱٬۰۰۰ درخواست در ثانیه انجام می‌دهد. اوج ۷٬۰۰۰ است، پس به ۷ تا نیاز داریم — به‌علاوه‌ی حاشیه برای جهش‌ها و برای از کار افتادن یک سرور.","بگو ۱۰ تا. توجه کن که از یک عدد اندازه‌گیری‌شده استفاده کردیم، نه حدس."],
+   callout:{t:"tip",text:"پخش کردن ترافیک روی این سرورها کار یک load balancer است — ماژول ۰۲ را ببین."},
+   changes:[["+","لایه‌ی وب: ۱۰ سرور"],["~","هر کدام در اوج حدود ۷۰٪ مشغول‌اند"]],
+   metrics:["10M",2300,7000,10,"?"]},
+  {name:"فضای ذخیره‌سازی",head:"چقدر فضای ذخیره‌سازی؟",phase:"تکنیک",
+   body:["عکس‌ها بزرگ‌ترین‌اند: ۱ میلیون آپلود × ۲ مگابایت = ۲ ترابایت در روز. در یک سال می‌شود حدود ۷۳۰ ترابایت.","داده معمولاً سه بار ذخیره می‌شود تا مردن یک دیسک چیزی را از دست ندهد — پس برای سال اول حدود ۲ پتابایت برنامه‌ریزی کن. این فوراً «یک سرور دیتابیس» را رد می‌کند."],
+   callout:{t:"insight",text:"فضای ذخیره‌سازی هر روز رشد می‌کند و هرگز ریست نمی‌شود. درخواست در ثانیه می‌آید و می‌رود؛ بایت‌ها می‌مانند."},
+   changes:[["+","لایه‌ی ذخیره‌سازی"],["+","۲ ترابایت در روز ← ~۷۳۰ ترابایت در سال"],["~","×۳ کپی ← ~۲ پتابایت"]],
+   metrics:["10M",2300,7000,10,730]},
+  {name:"پهنای باند",head:"چقدر شبکه؟",phase:"تکنیک",
+   body:["آپلودها بخش کوچک‌اند: ۲ ترابایت در روز حدود ۲۰ مگابایت در ثانیه ورودی است. دیدن بخش بزرگ است: اگر هر کاربر در روز ۱۰۰ عکس را به‌صورت thumbnailهای ۲۰۰ کیلوبایتی ببیند، می‌شود ۲۰۰ ترابایت در روز خروجی.","۲۰۰ ترابایت ÷ ۱۰۰٬۰۰۰ ثانیه ≈ ۲ گیگابایت در ثانیه — میانگین حدود ۱۶ گیگابیت در ثانیه، در اوج بیشتر. این کار یک CDN است، نه ده وب‌سرور."],
+   callout:{t:"insight",text:"اپ‌های رسانه‌ایِ خواندن‌محور معمولاً پیش از CPU به پهنای باند می‌رسند. بایت‌های خروجی را تخمین بزن، نه فقط درخواست‌ها را."},
+   changes:[["+","CDN تصاویر را سرو می‌کند"],["+","خروجی ≈ ۱۶ گیگابیت در ثانیه میانگین"]],
+   metrics:["10M",2300,7000,10,730]},
+  {name:"اندازه‌ی کش",head:"در حافظه جا می‌شود؟",phase:"تکنیک",
+   body:["فیدها مدام metadata عکس‌ها و پروفایل کاربران را می‌خوانند. آیا یک کش می‌تواند بخش داغ را نگه دارد؟ پروفایل‌ها: ۱۰ میلیون × ۲ کیلوبایت = ۲۰ گیگابایت. عکس‌های تازه‌ی امروز: ۱ میلیون × ۱ کیلوبایت = ۱ گیگابایت.","حدود ۲۱ گیگابایت — در حافظه‌ی یک سرور کش جا می‌شود (با یک سرور دوم برای افزونگی). به معماری عجیبی نیاز نیست."],
+   callout:{t:"tip",text:"حساب سرانگشتی اغلب می‌گوید «این از چیزی که فکر می‌کنی کوچک‌تر است». این به همان اندازه‌ی پیدا کردن چیز بزرگ ارزش دارد."},
+   changes:[["+","کش: ~۲۱ گیگابایت داده‌ی داغ"]],
+   metrics:["10M",2300,7000,10,730]},
+  {name:"عددها",head:"عددهایی که ارزش حفظ کردن دارند",phase:"نکته",
+   body:["چند عدد بیشتر تخمین‌ها را ممکن می‌کنند. مرتبه‌های بزرگی را یاد بگیر، نه اعشار را."],
+   table:[["خواندن از حافظه","100 ns"],["خواندن از SSD","100 µs"],["رفت‌وبرگشت، در یک دیتاسنتر","0.5 ms"],["رفت‌وبرگشت، آن سوی اقیانوس","75–150 ms"],["ثانیه‌های یک روز","~100,000"]],
+   metrics:["10M",2300,7000,10,730]},
+  {name:"جمع‌بندی",head:"جمع‌بندی",phase:"جمع‌بندی",
+   body:[],
+   bullets:["کاربران × عمل‌ها ÷ ۱۰۰ هزار ثانیه، میانگین درخواست در ثانیه را می‌دهد.","برای اوج، در ۲ تا ۳ برابر ضرب کن و برای آن اندازه بگیر.","سرورها = اوج ÷ ظرفیت هر سرور، به‌علاوه‌ی حاشیه‌ی امن.","فضای ذخیره‌سازی = آیتم در روز × اندازه × ۳۶۵ × کپی‌ها.","بایت‌های خروجی و حافظه را هم تخمین بزن — اغلب آن‌ها طراحی را تعیین می‌کنند."],
+   callout:{t:"next",text:"اینجا Foundations تمام شد. بعدی: Vertical vs Horizontal Scaling — وقتی عددها می‌گویند یک ماشین کافی نیست، چه کار کنی."},
+   metrics:["10M",2300,7000,10,730]}
+ ]
+}
+};
+</script>
+<script>
+"use strict";
+/* ================= SVG diagram helpers ================= */
+var C_REQ="#e07b2a", C_RES="#4d9e57", C_HS="#8fce6e";
+function dots(pid,color,n,dur,r){
+  var out="",i,b;
+  for(i=0;i<n;i++){ b=(i*dur/n).toFixed(2);
+    out+='<circle r="'+(r||6)+'" fill="'+color+'" stroke="var(--ink)" stroke-width="1.5"><animateMotion dur="'+dur+'s" begin="'+b+'s" repeatCount="indefinite"><mpath href="#'+pid+'"/></animateMotion></circle>';
+  } return out;
+}
+function cube(cx,cy,s,top,left,right,label,dim){
+  var dx=(s*0.88).toFixed(1);
+  return '<g'+(dim?' class="dim"':'')+'>'
+   +'<polygon points="'+cx+','+(cy-s)+' '+(cx+ +dx)+','+(cy-s*0.5)+' '+cx+','+cy+' '+(cx-dx)+','+(cy-s*0.5)+'" fill="'+top+'" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round"/>'
+   +'<polygon points="'+(cx-dx)+','+(cy-s*0.5)+' '+cx+','+cy+' '+cx+','+(cy+s)+' '+(cx-dx)+','+(cy+s*0.5)+'" fill="'+left+'" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round"/>'
+   +'<polygon points="'+cx+','+cy+' '+(cx+ +dx)+','+(cy-s*0.5)+' '+(cx+ +dx)+','+(cy+s*0.5)+' '+cx+','+(cy+s)+'" fill="'+right+'" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round"/>'
+   +'<text class="ent-label" x="'+cx+'" y="'+(cy+s+26)+'" text-anchor="middle">'+label+'</text></g>';
+}
+function cyl(cx,cy,w,h,top,body,label,dim){
+  var rx=w/2, ry=Math.round(h*0.17);
+  return '<g'+(dim?' class="dim"':'')+'>'
+   +'<path d="M '+(cx-rx)+' '+(cy-h/2+ry)+' L '+(cx-rx)+' '+(cy+h/2-ry)+' A '+rx+' '+ry+' 0 0 0 '+(cx+rx)+' '+(cy+h/2-ry)+' L '+(cx+rx)+' '+(cy-h/2+ry)+'" fill="'+body+'" stroke="var(--ink)" stroke-width="1.8"/>'
+   +'<ellipse cx="'+cx+'" cy="'+(cy-h/2+ry)+'" rx="'+rx+'" ry="'+ry+'" fill="'+top+'" stroke="var(--ink)" stroke-width="1.8"/>'
+   +'<text class="ent-label" x="'+cx+'" y="'+(cy+h/2+28)+'" text-anchor="middle">'+label+'</text></g>';
+}
+function pill(cx,cy,w,text,fa){
+  return '<g><rect class="pill-bg" x="'+(cx-w/2)+'" y="'+(cy-13)+'" width="'+w+'" height="26" rx="13"/>'
+   +'<text class="'+(fa?"fa":"ltr")+'" x="'+cx+'" y="'+(cy+4.5)+'" text-anchor="middle" font-size="'+(fa?11.5:11)+'" font-weight="600" fill="var(--ink)">'+text+'</text></g>';
+}
+function laptop(cx,cy,label){
+  return '<g transform="translate('+cx+','+cy+')">'
+   +'<rect x="-58" y="-54" width="116" height="80" rx="8" fill="var(--sheet)" stroke="var(--ink)" stroke-width="2"/>'
+   +'<rect x="-58" y="-54" width="116" height="17" rx="8" fill="var(--line)"/>'
+   +'<circle cx="-48" cy="-45.5" r="2.6" fill="var(--rust)"/><circle cx="-39" cy="-45.5" r="2.6" fill="var(--dns)"/><circle cx="-30" cy="-45.5" r="2.6" fill="var(--green-3)"/>'
+   +'<rect x="-21" y="-50" width="76" height="10" rx="5" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1"/>'
+   +'<text class="ltr" x="17" y="-42" text-anchor="middle" font-size="7.5" fill="var(--ink)">shop.example</text>'
+   +'<rect x="-46" y="-28" width="52" height="9" rx="3" fill="var(--green)"/>'
+   +'<rect x="-46" y="-14" width="92" height="6" rx="3" fill="var(--line)"/><rect x="-46" y="-4" width="78" height="6" rx="3" fill="var(--line)"/>'
+   +'<rect x="-46" y="8" width="26" height="14" rx="3" fill="var(--violet)"/><rect x="-14" y="8" width="26" height="14" rx="3" fill="var(--orange)"/><rect x="18" y="8" width="26" height="14" rx="3" fill="var(--mint)"/>'
+   +'<polygon points="-70,26 70,26 84,42 -84,42" fill="var(--card)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>'
+   +'<text class="fa" x="0" y="66" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">'+label+'</text></g>';
+}
+
+/* ---- lesson 1 diagram ---- */
+function diagram1(s){
+  var p='<svg viewBox="0 0 760 460" role="img" aria-label="دیاگرام سفر درخواست">';
+  p+='<defs>'
+    +'<path id="p_d1" d="M 168 268 C 185 215, 198 185, 206 162"/>'
+    +'<path id="p_d2" d="M 226 164 C 234 192, 224 228, 196 272"/>'
+    +'<path id="p_s1" d="M 212 292 C 300 215, 420 165, 492 138"/>'
+    +'<path id="p_s2" d="M 492 158 C 415 192, 300 246, 214 308"/>'
+    +'<path id="p_b1" d="M 594 154 C 614 200, 620 232, 615 260"/>'
+    +'<path id="p_b2" d="M 554 260 C 546 224, 546 196, 540 160"/>'
+    +'<path id="p_fr" d="M 212 292 C 300 215, 420 165, 492 138 C 548 146, 606 196, 615 256"/>'
+    +'<path id="p_fb" d="M 554 256 C 544 210, 516 168, 466 150 C 380 176, 282 242, 214 308"/>'
+    +'</defs>';
+  if(s>=1){ p+='<use href="#p_d1" class="dash-line"/><use href="#p_d2" class="dash-line"/>'; }
+  if(s>=2){ p+='<use href="#p_s1" class="dash-line"/><use href="#p_s2" class="dash-line"/>'; }
+  if(s>=4){ p+='<use href="#p_b1" class="dash-line"/><use href="#p_b2" class="dash-line"/>'; }
+  if(s>=1) p+=pill(150,208,172,"shop.example کجاست؟",true);
+  if(s>=4) p+=pill(583,208,176,"SELECT … FROM products",false);
+  /* moving dots per step */
+  if(s===1){ p+=dots("p_d1",C_REQ,2,2.2)+dots("p_d2",C_REQ,2,2.2); }
+  if(s===2){ p+=dots("p_s1",C_HS,2,2)+dots("p_s2",C_HS,2,2); }
+  if(s===3){ p+=dots("p_s1",C_REQ,1,1.9)+dots("p_s2",C_RES,1,1.9); }
+  if(s===4){ p+=dots("p_fr",C_REQ,2,3.6)+dots("p_fb",C_RES,2,3.6); }
+  if(s===5){ p+=dots("p_fb",C_RES,2,3.4)+dots("p_s1",C_REQ,1,2.6); }
+  if(s===6){ p+=dots("p_s1",C_REQ,4,2.8)+dots("p_s2",C_RES,4,2.8); }
+  if(s===7){ p+=dots("p_s1",C_REQ,1,3)+dots("p_b1",C_REQ,1,5)
+    +'<circle cx="516" cy="296" r="6.5" fill="'+C_REQ+'" stroke="var(--ink)" stroke-width="1.5"/>'
+    +'<circle cx="496" cy="314" r="6.5" fill="'+C_REQ+'" stroke="var(--ink)" stroke-width="1.5"/>'
+    +'<circle cx="524" cy="326" r="6.5" fill="'+C_REQ+'" stroke="var(--ink)" stroke-width="1.5"/>'; }
+  if(s===8){ p+=dots("p_s1",C_REQ,2,6.5)+dots("p_s2",C_RES,1,6.5); }
+  /* entities */
+  if(s>=1) p+=cube(215,112,42,"#f7d774","#eebd2e","#d9a41c","DNS resolver",s>=2);
+  if(s>=1) p+=pill(215,40,124,"→ 203.0.113.7",false);
+  if(s>=2) p+=cube(545,112,42,"#a8c8ef","#6f9fdc","#4a7fc4","Web Server",false);
+  if(s>=4) p+=cyl(575,318,94,102,"#c9b6f2","#a98fe3","database",false);
+  p+=laptop(150,330, s>=8 ? "تو · Sydney" : "تو");
+  return p+"</svg>";
+}
+function timebars1(){
+  var rows=[["DNS lookup",20,"var(--dns)"],["TCP + TLS handshake",60,"var(--hs)"],["request + server",55,"var(--server)"],["download",20,"var(--res)"]];
+  var h='<div class="timebars"><h4><span class="en3">WHERE TIME WENT</span> — زمان کجا رفت</h4>';
+  rows.forEach(function(r){
+    h+='<div class="tb-row"><span class="tl">'+r[0]+'</span><div class="tb-track"><div class="tb-fill" data-w="'+(r[1]/60*100)+'" style="background:'+r[2]+'"></div></div><span class="tv">'+r[1]+' ms</span></div>';
+  });
+  h+='<div class="tb-total">= مجموع <b>155 ms</b> — ۱۳۰ میلی‌ثانیه‌اش انتظار در شبکه بود.</div></div>';
+  return h;
+}
+
+/* ---- lesson 2 diagram ---- */
+function person(x,y){
+  return '<g transform="translate('+x+','+y+')"><circle cx="0" cy="-7" r="6" fill="var(--orange)" stroke="var(--ink)" stroke-width="1.5"/><path d="M -8 12 A 8.5 8.5 0 0 1 8 12 Z" fill="var(--orange)" stroke="var(--ink)" stroke-width="1.5"/></g>';
+}
+function diagram2(s){
+  var usersN=[3,6,8,6,6,6,6,2,2,6][s], usersLbl=["1,000","7,000","9,600","7,000","7,000","7,000","7,000","—","—","7,000"][s];
+  var util=[10,70,96,70,35,35,35,40,35,35][s], queue=[0,2,6,0,0,0,0,0,0,0][s];
+  var far=(s===5), p='<svg viewBox="0 0 760 430" role="img" aria-label="دیاگرام تأخیر و توان عملیاتی">';
+  var ux=[55,105,155,55,105,155,80,130], uy=[168,168,168,216,216,216,264,264], i;
+  for(i=0;i<usersN;i++) p+=person(ux[i],uy[i]);
+  p+='<text class="ltr" x="105" y="330" text-anchor="middle" font-size="12" fill="var(--muted)">USERS · '+usersLbl+'</text>';
+  if(s===7){ /* fan-out */
+    p+='<defs><path id="q_u" d="M 196 214 C 260 210, 300 214, 330 214"/></defs>';
+    var sx=[452,560,668], sy=[140,214,288], k=0;
+    for(var r2=0;r2<3;r2++) for(var c2=0;c2<3;c2++){
+      if(k>=6) break; var X=sx[c2]-190, Y=sy[r2]; k++;
+    }
+    var pos=[[470,128],[578,128],[686,128],[470,238],[578,238],[686,238]];
+    pos.forEach(function(pp,j){
+      p+='<defs><path id="fo'+j+'" d="M 200 214 C 300 '+(214+(pp[1]+22-214)*0.4)+', 360 '+(pp[1]+22)+', '+(pp[0]-4)+' '+(pp[1]+22)+'"/></defs>';
+      p+='<rect x="'+pp[0]+'" y="'+pp[1]+'" width="76" height="44" rx="9" fill="'+(j===4?"#f7e3ae":"var(--card)")+'" stroke="var(--ink)" stroke-width="1.8"/>';
+      p+='<text class="ltr" x="'+(pp[0]+38)+'" y="'+(pp[1]+27)+'" text-anchor="middle" font-size="10.5" fill="var(--ink)">index '+(j+1)+'</text>';
+      p+=dots("fo"+j, j===4?"#e0a83c":C_REQ, 1, j===4?4.6:2.4);
+    });
+    p+='<text class="fa" x="560" y="330" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">صفحه منتظر کندترین می‌ماند</text>';
+    return p+"</svg>";
+  }
+  if(s===8){ /* batching */
+    p+='<defs><path id="bt1" d="M 210 214 L 400 214"/><path id="bt2" d="M 452 214 L 596 214"/></defs>';
+    for(i=0;i<5;i++) p+='<rect x="'+(196)+'" y="'+(150+i*30)+'" width="13" height="13" rx="3" fill="'+C_REQ+'" stroke="var(--ink)" stroke-width="1.3"/>';
+    p+='<rect x="402" y="192" width="48" height="48" rx="8" fill="var(--green-2)" stroke="var(--ink)" stroke-width="2"><animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#bt2"/></animateMotion></rect>';
+    p+='<text class="ltr" x="426" y="180" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">×100</text>';
+    p+=cyl(648,214,86,96,"#c9b6f2","#a98fe3","database",false);
+    p+='<text class="fa" x="330" y="300" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">رویدادها در دسته‌های ۱۰۰تایی نوشته می‌شوند</text>';
+    return p+"</svg>";
+  }
+  var scx=far?566:430;
+  p+='<defs>'
+    +'<path id="q_1" d="M 196 200 C '+(196+(scx-196)*0.4)+' 188, '+(scx-110)+' 196, '+(scx-82)+' 206"/>'
+    +'<path id="q_2" d="M '+(scx-82)+' 232 C '+(scx-110)+' 244, 260 250, 196 234"/>'
+    +'</defs>';
+  p+='<use href="#q_1" class="dash-line"/><use href="#q_2" class="dash-line"/>';
+  var dur = s===2?3.8 : far?5.2 : 2.4;
+  p+=dots("q_1",C_REQ,3,dur)+dots("q_2",C_RES,3,dur);
+  if(s===3) p+=dots("q_1","#e0a83c",1,4.4);
+  if(far){
+    p+='<line x1="215" y1="118" x2="'+(scx-90)+'" y2="118" stroke="var(--rust)" stroke-width="1.8" stroke-dasharray="6 5"/>'
+      +'<polygon points="'+(scx-90)+',118 '+(scx-102)+',112 '+(scx-102)+',124" fill="var(--rust)"/>'
+      +'<polygon points="215,118 227,112 227,124" fill="var(--rust)"/>'
+      +'<text class="fa" x="'+((215+scx-90)/2)+'" y="102" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink)">نیویورک ← لندن</text>'
+      +'<text class="ltr" x="'+((215+scx-90)/2)+'" y="140" text-anchor="middle" font-size="11" fill="var(--muted)">~75 ms / round trip</text>';
+  }
+  var uc = util>=85?"#d6503f":(util>=55?"#e0a83c":"var(--green-3)");
+  p+='<rect x="'+(scx-78)+'" y="168" width="156" height="94" rx="12" fill="var(--card)" stroke="var(--ink)" stroke-width="2"/>'
+    +'<text x="'+scx+'" y="196" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">SERVER</text>'
+    +'<rect x="'+(scx-58)+'" y="210" width="116" height="15" rx="7" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1.5"/>'
+    +'<rect x="'+(scx-58)+'" y="210" width="'+(116*util/100)+'" height="15" rx="7" fill="'+uc+'"/>'
+    +'<text class="ltr" x="'+scx+'" y="248" text-anchor="middle" font-size="11" fill="var(--muted)">UTILIZATION '+util+'%</text>';
+  if(s===6) p+=pill(scx,128,178,"در پرواز ≈ ۴۲ درخواست",true);
+  if(queue>0){
+    for(i=0;i<queue;i++) p+='<circle cx="'+(scx-(queue-1)*15+i*30)+'" cy="292" r="8" fill="#b9ac97" stroke="var(--ink)" stroke-width="1.5"/>';
+    p+='<text class="fa" x="'+scx+'" y="326" text-anchor="middle" font-size="12.5" fill="var(--muted)">در صف: '+queue+' درخواست</text>';
+  }
+  return p+"</svg>";
+}
+
+/* ---- lesson 3 diagram ---- */
+function diagram3(s){
+  var p='<svg viewBox="0 0 760 470" role="img" aria-label="پنل حساب سرانگشتی">';
+  p+='<rect x="28" y="22" width="704" height="426" rx="16" fill="var(--sheet)" stroke="var(--ink)" stroke-width="2"/>';
+  p+='<text class="fa" x="380" y="60" text-anchor="middle" font-size="16" font-weight="800" fill="var(--ink)">دستمالِ PhotoShare</text>';
+  function card(i,label,val,extra,danger){
+    if(s<i) return "";
+    var y=82+i*52;
+    var h='<g><rect x="54" y="'+y+'" width="652" height="44" rx="10" fill="var(--card)" stroke="'+(danger?"var(--rust)":"var(--ink)")+'" stroke-width="1.6"/>'
+      +'<text class="fa" x="692" y="'+(y+28)+'" text-anchor="end" font-size="13" font-weight="700" fill="var(--ink)">'+label+'</text>'
+      +'<text class="ltr" x="238" y="'+(y+28)+'" font-size="12.5" font-weight="600" fill="var(--ink)">'+val+'</text>'
+      +(extra||"")+'</g>';
+    return h;
+  }
+  var spark='<polyline points="86,222 116,215 146,220 172,196 198,217 216,223" fill="none" stroke="var(--rust)" stroke-width="2.2"/>';
+  var sq=""; for(var i=0;i<10;i++) sq+='<rect x="'+(84+i*21)+'" y="'+(82+3*52+13)+'" width="15" height="15" rx="3" fill="var(--server)" stroke="var(--ink)" stroke-width="1.2"/>';
+  var cyls=""; [92,128,164].forEach(function(cx){ cyls+='<g><rect x="'+(cx-13)+'" y="'+(82+4*52+12)+'" width="26" height="20" fill="#a98fe3" stroke="var(--ink)" stroke-width="1.2"/><ellipse cx="'+cx+'" cy="'+(82+4*52+12)+'" rx="13" ry="5" fill="#c9b6f2" stroke="var(--ink)" stroke-width="1.2"/></g>'; });
+  var cloud='<path d="M 96 372 a13 13 0 1 1 5 -25 a17 17 0 0 1 32 -5 a12 12 0 1 1 7 30 z" fill="var(--mint)" stroke="var(--ink)" stroke-width="1.5"/>';
+  var cache='<rect x="82" y="'+(82+6*52+12)+'" width="96" height="20" rx="5" fill="var(--green-2)" stroke="var(--ink)" stroke-width="1.4"/><text class="ltr" x="130" y="'+(82+6*52+26)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">21 GB</text>';
+  if(s!==7){
+    p+=card(0,"کاربران روزانه","10M users · 20 req/day","");
+    p+=card(1,"میانگین بار","10M × 20 ÷ 100,000 ≈ 2,300 req/s","");
+    p+=card(2,"اوج بار","peak ≈ 3× ≈ 7,000 req/s",spark,s===2);
+    p+=card(3,"لایه‌ی وب","10 servers",sq);
+    p+=card(4,"ذخیره‌سازی","730 TB/yr · ×3 reps ≈ 2 PB",cyls);
+    p+=card(5,"تحویل محتوا","CDN · egress ≈ 16 Gbps",cloud);
+    p+=card(6,"کش","cache ≈ 21 GB hot data",cache);
+  }
+  if(s===0){
+    p+='<rect x="330" y="270" width="100" height="64" rx="10" fill="var(--card)" stroke="var(--ink)" stroke-width="2"/>'
+      +'<text x="380" y="298" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">1 SERVER?</text>'
+      +'<text x="380" y="322" text-anchor="middle" font-size="20" font-weight="800" fill="var(--muted)">?</text>';
+  }
+  if(s===7){
+    var rows=DETAILS["napkin-math"].steps[7].table;
+    p+='<g><rect x="140" y="96" width="480" height="286" rx="14" fill="var(--card)" stroke="var(--ink)" stroke-width="2"/>'
+      +'<text class="fa" x="380" y="130" text-anchor="middle" font-size="15" font-weight="800" fill="var(--ink)">عددهایی که ارزش حفظ کردن دارند</text>';
+    rows.forEach(function(r,i){
+      var y=162+i*42;
+      p+='<text class="fa" x="596" y="'+y+'" text-anchor="end" font-size="13" fill="var(--ink)">'+r[0]+'</text>'
+        +'<text class="ltr" x="164" y="'+y+'" font-size="13.5" font-weight="700" fill="var(--ink)">'+r[1]+'</text>'
+        +(i<rows.length-1?'<line x1="164" y1="'+(y+13)+'" x2="596" y2="'+(y+13)+'" stroke="var(--line)" stroke-width="1.2"/>':"");
+    });
+    p+='</g>';
+  }
+  return p+"</svg>";
+}
+function stageHTML(slug,s){
+  if(slug==="request-lifecycle") return s===9?timebars1():diagram1(s);
+  if(slug==="latency-throughput") return diagram2(s);
+  if(slug==="napkin-math") return diagram3(s);
+  return "";
+}
+</script>
+<script>
+"use strict";
+/* ================= app ================= */
+var $=function(id){return document.getElementById(id);};
+var FA="۰۱۲۳۴۵۶۷۸۹";
+function faNum(n){ return String(n).replace(/[0-9]/g,function(d){return FA[+d];}); }
+function fmt(n){ return n.toLocaleString("en-US"); }
+var state={slug:"request-lifecycle",step:1};
+var playing=true, timer=null, visited={}, mv=[], prevSlug=null;
+var reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function toast(msg){
+  var t=$("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove("show");},2200);
+}
+
+/* ---------- sidebar ---------- */
+function renderSidebar(){
+  var h='<div class="side-head"><h2>دوره</h2><span class="progress-label">PROGRESS — <b>'+faNum(Object.keys(visited).length)+' / '+faNum(40)+'</b></span></div>'
+    +'<div class="progress-bar"><i style="width:'+(Object.keys(visited).length/40*100)+'%"></i></div>';
+  MODULES.forEach(function(m,mi){
+    h+='<div class="mod"><div class="mod-head"><span class="num">'+m.n+'</span><span class="dot" style="background:'+m.color+'"></span>'+m.name+'</div>';
+    LESSONS.forEach(function(l){
+      if(l.mod!==mi) return;
+      h+='<button type="button" class="lesson-link'+(l.slug===state.slug?" active":"")+(visited[l.slug]?" visited":"")+'" data-goto="'+l.slug+'"><span class="lnum">'+(l.idx+1)+'</span><span class="lt">'+l.title+'</span><span class="seen"></span></button>';
+    });
+    h+='</div>';
+  });
+  $("sidebar").innerHTML=h;
+  var links=$("sidebar").querySelectorAll("[data-goto]");
+  for(var i=0;i<links.length;i++) links[i].addEventListener("click",function(){
+    goLesson(this.getAttribute("data-goto"),1,true); closeSide();
+  });
+  var act=$("sidebar").querySelector(".lesson-link.active");
+  if(act) act.scrollIntoView({block:"nearest"});
+}
+
+/* ---------- metrics animation ---------- */
+function setMetric(i,target,defUnit){
+  var el=$("mv"+i); if(!el) return;
+  var unitEl=$("mu"+i);
+  var cur=mv[i];
+  if(target===null||target===undefined){ el.textContent="—"; if(unitEl)unitEl.textContent=""; mv[i]=null; return; }
+  if(typeof target==="string"){ el.textContent=target; if(unitEl)unitEl.textContent=""; mv[i]=null; return; }
+  var val=target, unit=defUnit;
+  if(typeof target==="object"){ val=target.v; unit=target.u||defUnit; }
+  if(unitEl) unitEl.textContent=unit||"";
+  if(reduced||typeof cur!=="number"){ el.textContent=fmt(val); mv[i]=val; return; }
+  var from=cur, start=null;
+  function tick(ts){
+    if(!document.body.contains(el)) return;
+    if(start===null) start=ts;
+    var t=Math.min(1,(ts-start)/950), e=1-Math.pow(1-t,3);
+    el.textContent=fmt(Math.round(from+(val-from)*e));
+    if(t<1) requestAnimationFrame(tick); else mv[i]=val;
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- lesson render ---------- */
+function lessonHead(l){
+  var m=MODULES[l.mod];
+  return '<div class="kicker"><span class="mdot" style="background:'+m.color+'"></span><span>LESSON '+(l.idx+1)+' / 40</span><span>·</span><span>MODULE '+m.n+' — </span><span class="fa-part">'+m.name+'</span></div>'
+    +'<h1 class="lesson-title">'+l.title+'</h1>'
+    +'<p class="lesson-summary">'+l.summary+'</p>'
+    +'<div class="chips"><span class="chip level">'+l.level+'</span><span class="chip">'+faNum(l.mins)+' دقیقه</span><span class="chip">'+faNum(l.steps)+' مرحله</span></div>';
+}
+function lessonNav(l){
+  var prev=LESSONS[l.idx-1], next=LESSONS[l.idx+1], h='<div class="lesson-nav">';
+  if(prev) h+='<a href="#/'+prev.slug+'/1"><span class="dir">→ PREV LESSON</span><br><span class="t">'+prev.title+'</span></a>';
+  if(next) h+='<a class="next-l" href="#/'+next.slug+'/1"><span class="dir">NEXT LESSON ←</span><br><span class="t">'+next.title+'</span></a>';
+  return h+'</div>';
+}
+var CTAG={insight:"نکته",tip:"نکته‌ی کاربردی",warn:"مراقب باشید",next:"بعدی"};
+function render(){
+  var l=bySlug[state.slug]; if(!l){ l=LESSONS[0]; state.slug=l.slug; }
+  if(prevSlug!==l.slug){ mv=[]; prevSlug=l.slug; }
+  var det=DETAILS[l.slug];
+  visited[l.slug]=true;
+  var total=det?det.steps.length:0;
+  if(det&&state.step>total) state.step=total;
+  if(state.step<1) state.step=1;
+  var h=lessonHead(l);
+  if(!det){
+    h+='<div class="placeholder"><span class="qmark">?</span><p class="big">محتوای این درس هنوز آماده نیست</p><p>در نسخه‌ی اصلی این درس کامل است؛ در این کلون فقط سه درس اول کامل ساخته شده‌اند.</p></div>'
+      +lessonNav(l);
+    $("main").innerHTML=h;
+    stopTimer(); renderSidebar(); window.scrollTo(0,0);
+    return;
+  }
+  var st=det.steps[state.step-1];
+  /* metrics */
+  h+='<div class="metrics '+(det.metrics.length===5?"c5":"c4")+'">';
+  det.metrics.forEach(function(m,i){
+    h+='<div class="metric'+(i===det.metrics.length-1&&(l.slug!=="latency-throughput")?" total":"")+'"><div class="mlabel">'+m[0]+'</div><div class="mval"><span id="mv'+i+'">—</span><small id="mu'+i+'"></small></div></div>';
+  });
+  h+='</div>';
+  /* grid: panel + stage */
+  h+='<div class="lesson-grid"><div class="panel">';
+  h+='<div class="pcard"><h3><span class="en3">KEY IDEA</span> — ایده‌ی کلیدی</h3>'
+    +'<span class="step-phase">'+st.phase+'</span>'
+    +'<h2 class="step-head">'+st.head+'</h2><div class="step-body">';
+  (st.body||[]).forEach(function(p){ h+='<p>'+p+'</p>'; });
+  if(st.bullets){
+    h+='<ul style="margin:4px 0 0;padding-inline-start:20px">';
+    st.bullets.forEach(function(b){ h+='<li>'+b+'</li>'; });
+    h+='</ul>';
+  }
+  if(st.table){
+    h+='<div style="margin-top:10px;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden">';
+    st.table.forEach(function(r,i){
+      h+='<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 13px;'+(i<st.table.length-1?"border-bottom:1px solid var(--line);":"")+'"><span>'+r[0]+'</span><span class="mono" dir="ltr" style="font-weight:700;white-space:nowrap">'+r[1]+'</span></div>';
+    });
+    h+='</div>';
+  }
+  h+='</div></div>';
+  if(st.callout){
+    h+='<div><h3 class="sec-label"><span class="en3">GOOD TO KNOW</span> — خوب است بدانید</h3>'
+      +'<div class="callout '+st.callout.t+'"><span class="ctag">'+CTAG[st.callout.t]+'</span><p>'+st.callout.text+'</p></div></div>';
+  }
+  if(st.changes){
+    h+='<div class="pcard"><h3><span class="en3">WHAT CHANGED</span> — چه چیزی تغییر کرد</h3><ul class="changes">';
+    st.changes.forEach(function(c){
+      var cls=c[0]==="+"?"plus":(c[0]==="−"?"minus":"tilde");
+      var sym=c[0]==="+"?"+":(c[0]==="−"?"−":"~");
+      h+='<li><span class="mk '+cls+'">'+sym+'</span><span>'+c[1]+'</span></li>';
+    });
+    h+='</ul></div>';
+  }
+  h+='<div class="pcard"><h3><span class="en3">YOU\'LL LEARN</span> — چه چیزی یاد می‌گیرید</h3><ul class="learn-list">';
+  det.learn.forEach(function(it){
+    h+='<li><button type="button" data-jump="'+it[1]+'"><span class="snum">'+it[1]+'</span><span>'+it[0]+'</span></button></li>';
+  });
+  h+='</ul></div>';
+  h+='</div>'; /* panel */
+  h+='<div class="stage-wrap"><div class="stage-card" id="stageCard">'+stageHTML(l.slug,state.step-1);
+  h+='<div class="legend">'+det.legend.map(function(g){return '<span><i style="background:'+g[0]+'"></i>'+g[1]+'</span>';}).join("")+'</div>';
+  h+='</div>';
+  /* strip + controls */
+  h+='<div class="strip-card"><div class="strip-top"><h3><span class="en3">IN THIS LESSON</span> — در این درس</h3><span class="step-count">مرحله‌ی '+faNum(state.step)+' از '+faNum(total)+' · '+st.name+'</span></div><div class="circles">';
+  det.steps.forEach(function(s2,i){
+    h+='<button type="button" data-step="'+(i+1)+'" class="'+(i+1===state.step?"cur":(i+1<state.step?"done":""))+'" aria-label="مرحله‌ی '+faNum(i+1)+': '+s2.name+'">'+(i+1)+'</button>';
+  });
+  h+='</div><div class="controls">'
+    +'<button type="button" class="btn" id="btnBack"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>قبلی</button>'
+    +'<button type="button" class="btn primary" id="btnNext">بعدی<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>'
+    +'<button type="button" class="btn" id="btnReplay"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>تکرار</button>'
+    +'<button type="button" class="btn" id="btnPlay"></button>'
+    +'</div></div></div></div>';
+  h+=lessonNav(l);
+  $("main").innerHTML=h;
+  /* metrics values */
+  det.metrics.forEach(function(m,i){ setMetric(i, st.metrics?st.metrics[i]:null, m[1]); });
+  /* time bars animation */
+  var fills=$("main").querySelectorAll(".tb-fill");
+  if(fills.length) requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    for(var i=0;i<fills.length;i++) fills[i].style.width=fills[i].getAttribute("data-w")+"%";
+  });});
+  /* wire controls */
+  $("btnBack").addEventListener("click",prevStep);
+  $("btnNext").addEventListener("click",nextStep);
+  $("btnReplay").addEventListener("click",replay);
+  $("btnPlay").addEventListener("click",togglePlay);
+  var cs=$("main").querySelectorAll("[data-step]");
+  for(var i=0;i<cs.length;i++) cs[i].addEventListener("click",function(){ goStep(+this.getAttribute("data-step")); });
+  var js=$("main").querySelectorAll("[data-jump]");
+  for(var j=0;j<js.length;j++) js[j].addEventListener("click",function(){ goStep(+this.getAttribute("data-jump")); });
+  updatePlayBtn();
+  renderSidebar();
+  schedule();
+}
+function updatePlayBtn(){
+  var b=$("btnPlay"); if(!b) return;
+  b.innerHTML=playing
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1.4"/><rect x="14" y="4" width="5" height="16" rx="1.4"/></svg>توقف'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.8v14.4c0 1 1.1 1.6 2 1.1l11-7.2c.8-.5.8-1.7 0-2.2L9 3.8c-.9-.6-2 0-2 1z"/></svg>پخش';
+}
+
+/* ---------- navigation / autoplay ---------- */
+function setHash(){ var t="#/"+state.slug+"/"+state.step; if(location.hash!==t) location.hash=t; }
+function goLesson(slug,step,play){
+  state.slug=slug; state.step=step||1; if(play) playing=true;
+  setHash(); render();
+}
+function goStep(n){ state.step=n; setHash(); render(); }
+function nextStep(){
+  var l=bySlug[state.slug], det=DETAILS[l.slug];
+  if(det&&state.step<det.steps.length){ goStep(state.step+1); return; }
+  var nx=LESSONS[l.idx+1];
+  if(nx) goLesson(nx.slug,1,true);
+}
+function prevStep(){
+  var l=bySlug[state.slug], det=DETAILS[l.slug];
+  if(det&&state.step>1){ goStep(state.step-1); return; }
+  var pv=LESSONS[l.idx-1];
+  if(pv){ var pd=DETAILS[pv.slug]; goLesson(pv.slug, pd?pd.steps.length:1, playing); }
+}
+function replay(){ state.step=1; playing=true; setHash(); render(); }
+function togglePlay(){
+  var l=bySlug[state.slug], det=DETAILS[l.slug];
+  if(!det) return;
+  if(!playing&&state.step>=det.steps.length){ replay(); return; }
+  playing=!playing; updatePlayBtn(); schedule();
+}
+function stopTimer(){ if(timer){ clearTimeout(timer); timer=null; } }
+function schedule(){
+  stopTimer();
+  var l=bySlug[state.slug], det=DETAILS[l.slug];
+  if(!playing||!det) return;
+  if(state.step>=det.steps.length){ playing=false; updatePlayBtn(); return; }
+  timer=setTimeout(function(){ nextStep(); },7000);
+}
+function route(){
+  var m=location.hash.match(/^#\/([a-z0-9-]+)(?:\/(\d+))?/);
+  if(m&&bySlug[m[1]]){
+    var changed=(m[1]!==state.slug);
+    state.slug=m[1]; state.step=m[2]?Math.max(1,parseInt(m[2],10)):1;
+    if(changed) playing=true;
+  } else { state.slug="request-lifecycle"; state.step=1; }
+  render();
+}
+window.addEventListener("hashchange",route);
+
+/* ---------- search ---------- */
+var searchOpen=false, selIdx=0, results=[];
+function buildResults(q){
+  q=(q||"").trim().toLowerCase(); results=[];
+  LESSONS.forEach(function(l){
+    if(!q||l.title.toLowerCase().indexOf(q)>-1||l.summary.toLowerCase().indexOf(q)>-1||l.slug.indexOf(q)>-1)
+      results.push({slug:l.slug,step:1,kind:"LESSON "+(l.idx+1),title:l.title,sub:l.summary});
+  });
+  if(q){
+    LESSONS.forEach(function(l){
+      var det=DETAILS[l.slug]; if(!det) return;
+      det.steps.forEach(function(s,i){
+        if(s.name.toLowerCase().indexOf(q)>-1||s.head.toLowerCase().indexOf(q)>-1)
+          results.push({slug:l.slug,step:i+1,kind:"STEP "+(i+1),title:s.head,sub:l.title});
+      });
+    });
+  }
+  return results;
+}
+function renderResults(){
+  var box=$("searchResults");
+  if(!results.length){ box.innerHTML='<div class="no-results">نتیجه‌ای پیدا نشد.</div>'; return; }
+  box.innerHTML=results.map(function(r,i){
+    return '<button type="button" class="result'+(i===selIdx?" sel":"")+'" data-ri="'+i+'"><span class="rn">'+(i+1)+'</span><span><span class="rk">'+r.kind+'</span><br><span class="rt">'+r.title+'</span><br><span class="rs">'+r.sub+'</span></span></button>';
+  }).join("");
+  var btns=box.querySelectorAll("[data-ri]");
+  for(var i=0;i<btns.length;i++) btns[i].addEventListener("click",function(){ openResult(+this.getAttribute("data-ri")); });
+  var sel=box.querySelector(".result.sel"); if(sel) sel.scrollIntoView({block:"nearest"});
+}
+function openResult(i){
+  var r=results[i]; if(!r) return;
+  closeSearch(); goLesson(r.slug,r.step,true);
+}
+function openSearch(){
+  searchOpen=true; $("searchOverlay").classList.add("open");
+  $("searchInput").value=""; selIdx=0; buildResults(""); renderResults();
+  setTimeout(function(){ $("searchInput").focus(); },30);
+}
+function closeSearch(){ searchOpen=false; $("searchOverlay").classList.remove("open"); }
+$("openSearch").addEventListener("click",openSearch);
+$("searchOverlay").addEventListener("click",function(e){ if(e.target===this) closeSearch(); });
+$("searchInput").addEventListener("input",function(){ selIdx=0; buildResults(this.value); renderResults(); });
+
+/* ---------- header bits ---------- */
+document.querySelectorAll("[data-soon]").forEach(function(b){ b.addEventListener("click",function(){ toast("به‌زودی می‌آید"); }); });
+$("langBtn").addEventListener("click",function(){ toast("به‌زودی می‌آید"); });
+$("themeBtn").addEventListener("click",function(){
+  var dark=document.documentElement.getAttribute("data-theme")==="dark";
+  document.documentElement.setAttribute("data-theme",dark?"light":"dark");
+  $("themeIconMoon").style.display=dark?"":"none";
+  $("themeIconSun").style.display=dark?"none":"";
+});
+function closeSide(){ $("sidebar").classList.remove("open"); $("sideBackdrop").classList.remove("show"); }
+$("burger").addEventListener("click",function(){
+  var open=$("sidebar").classList.toggle("open");
+  $("sideBackdrop").classList.toggle("show",open);
+});
+$("sideBackdrop").addEventListener("click",closeSide);
+
+/* ---------- keyboard ---------- */
+document.addEventListener("keydown",function(e){
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){ e.preventDefault(); searchOpen?closeSearch():openSearch(); return; }
+  if(searchOpen){
+    if(e.key==="Escape"){ closeSearch(); }
+    else if(e.key==="ArrowDown"){ e.preventDefault(); selIdx=Math.min(results.length-1,selIdx+1); renderResults(); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); selIdx=Math.max(0,selIdx-1); renderResults(); }
+    else if(e.key==="Enter"){ e.preventDefault(); openResult(selIdx); }
+    return;
+  }
+  if(e.key==="Escape"){ closeSide(); return; }
+  var tag=(e.target&&e.target.tagName)||"";
+  if(tag==="INPUT"||tag==="TEXTAREA") return;
+  if(e.key===" "){ e.preventDefault(); togglePlay(); }
+  else if(e.key==="ArrowRight"){ e.preventDefault(); nextStep(); }
+  else if(e.key==="ArrowLeft"){ e.preventDefault(); prevStep(); }
+  else if(e.key.toLowerCase()==="r"){ replay(); }
+});
+
+/* ---------- init ---------- */
+if(window.matchMedia("(prefers-color-scheme: dark)").matches){
+  document.documentElement.setAttribute("data-theme","dark");
+  $("themeIconMoon").style.display="none"; $("themeIconSun").style.display="";
+}
+route();
+</script>
+</body>
+</html>
