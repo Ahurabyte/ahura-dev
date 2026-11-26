@@ -55,7 +55,7 @@ nav.tabs button.active{background:var(--green);border-color:var(--ink);box-shado
 #burger{display:none}
 
 /* ---------- layout ---------- */
-.shell{display:grid;grid-template-columns:minmax(0,1fr) 302px;max-width:1560px;margin:0 auto;padding-top:58px}
+.shell{display:grid;grid-template-columns:minmax(0,1fr) 302px;max-width:1920px;margin:0 auto;padding-top:58px}
 main{grid-column:1;padding:22px 26px 70px;min-width:0}
 aside.side{grid-column:2;border-inline-start:1.5px solid var(--line);background:var(--sheet);position:sticky;top:58px;height:calc(100vh - 58px);height:calc(100dvh - 58px);overflow-y:auto;padding:16px 14px 40px}
 .side-head{display:flex;align-items:baseline;justify-content:space-between;padding:2px 6px 8px}
@@ -88,12 +88,12 @@ h1.lesson-title{font-size:29px;font-weight:900;margin:6px 0 4px;line-height:1.35
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
 .chip{font-size:12.5px;font-weight:700;background:var(--card);border:1.5px solid var(--ink);border-radius:99px;padding:2px 12px;box-shadow:1px 1.5px 0 var(--ink)}
 .chip.level{background:var(--violet)}
-.metrics{display:grid;gap:10px;margin-bottom:14px}
-.metrics.c5{grid-template-columns:repeat(5,1fr)}
-.metrics.c4{grid-template-columns:repeat(4,1fr)}
-.metric{background:var(--card);border:1.5px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:9px 13px 7px;min-width:0}
+.metrics{display:grid;gap:10px;margin-bottom:14px;direction:ltr}
+.metrics.c5{grid-template-columns:repeat(5,116px);justify-content:start}
+.metrics.c4{grid-template-columns:repeat(4,132px);justify-content:start}
+.metric{background:var(--card);border:1.5px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:7px 12px 5px;min-width:0;min-height:55px}
 .metric .mlabel{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.6px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:left}
-.metric .mval{font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:800;line-height:1.3;direction:ltr;text-align:left}
+.metric .mval{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;line-height:1.3;direction:ltr;text-align:left}
 .metric .mval small{font-size:12px;font-weight:600;color:var(--muted);margin-inline-start:3px}
 .metric.total{background:var(--green)}
 .lesson-grid{display:grid;grid-template-columns:348px minmax(0,1fr);gap:16px;align-items:start}
@@ -131,8 +131,11 @@ h1.lesson-title{font-size:29px;font-weight:900;margin:6px 0 4px;line-height:1.35
 .strip-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:11px}
 .strip-top h3{margin:0;font-size:11.5px;color:var(--muted)}
 .strip-top .step-count{font-size:12.5px;color:var(--muted)}
-.circles{display:flex;gap:7px;flex-wrap:wrap}
-.circles button{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ink);background:var(--card);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;padding:0;flex-shrink:0}
+.circles{display:flex;justify-content:space-between;gap:4px}
+.citem{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.citem .clabel{font-size:11px;color:var(--muted);text-align:center;line-height:1.35;max-width:100px}
+.citem.cur .clabel{color:var(--ink);font-weight:700}
+.circles button{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--ink);background:var(--card);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:0;flex-shrink:0}
 .circles button:hover{background:var(--green)}
 .circles button.done{background:var(--green)}
 .circles button.cur{background:var(--green-3);color:#12240c;box-shadow:1.5px 2px 0 var(--ink);transform:scale(1.08)}
@@ -196,13 +199,18 @@ svg text{font-family:'JetBrains Mono',monospace}
 svg text.ltr{direction:ltr;unicode-bidi:isolate}
 svg .fa{font-family:'Vazirmatn',sans-serif}
 .dim{opacity:.45}
-.pill-bg{fill:var(--sheet);stroke:var(--ink);stroke-width:1.5}
+.pill-bg{fill:var(--sheet);stroke:var(--ink);stroke-width:2.5}
+.panel{animation:panelIn .55s ease both}
+@keyframes panelIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+.node-in{animation:nodeIn 1.05s ease both}
+@keyframes nodeIn{from{opacity:.15}to{opacity:1}}
 html[data-theme="dark"] .pill-bg{fill:#2e2a24}
 .ent-label{font-size:13px;font-weight:700;fill:var(--ink)}
 .ent-sub{font-size:10.5px;fill:var(--muted)}
 .dash-line{stroke:var(--muted);stroke-width:1.6;stroke-dasharray:5 5;fill:none}
 @media (prefers-reduced-motion: reduce){
   .tb-fill{transition:none}
+  .panel,.node-in{animation:none}
 }
 
 /* ---------- responsive ---------- */
@@ -518,16 +526,36 @@ var C_REQ="#e07b2a", C_RES="#4d9e57", C_HS="#8fce6e";
 function dots(pid,color,n,dur,r){
   var out="",i,b;
   for(i=0;i<n;i++){ b=(i*dur/n).toFixed(2);
-    out+='<circle r="'+(r||6)+'" fill="'+color+'" stroke="var(--ink)" stroke-width="1.5"><animateMotion dur="'+dur+'s" begin="'+b+'s" repeatCount="indefinite"><mpath href="#'+pid+'"/></animateMotion></circle>';
+    out+='<circle r="'+(r||6.5)+'" fill="'+color+'" stroke="var(--ink)" stroke-width="1.8"><animateMotion dur="'+dur+'s" begin="'+b+'s" repeatCount="indefinite"><mpath href="#'+pid+'"/></animateMotion></circle>';
   } return out;
 }
-function cube(cx,cy,s,top,left,right,label,dim){
-  var dx=(s*0.88).toFixed(1);
-  return '<g'+(dim?' class="dim"':'')+'>'
-   +'<polygon points="'+cx+','+(cy-s)+' '+(cx+ +dx)+','+(cy-s*0.5)+' '+cx+','+cy+' '+(cx-dx)+','+(cy-s*0.5)+'" fill="'+top+'" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round"/>'
-   +'<polygon points="'+(cx-dx)+','+(cy-s*0.5)+' '+cx+','+cy+' '+cx+','+(cy+s)+' '+(cx-dx)+','+(cy+s*0.5)+'" fill="'+left+'" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round"/>'
-   +'<polygon points="'+cx+','+cy+' '+(cx+ +dx)+','+(cy-s*0.5)+' '+(cx+ +dx)+','+(cy+s*0.5)+' '+cx+','+(cy+s)+'" fill="'+right+'" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round"/>'
-   +'<text class="ent-label" x="'+cx+'" y="'+(cy+s+26)+'" text-anchor="middle">'+label+'</text></g>';
+function iconGlobe(x,y){
+  return '<g transform="translate('+x+','+y+')" fill="none" stroke="var(--ink)" stroke-width="2.4"><circle r="17"/><ellipse rx="7.5" ry="17"/><path d="M-17 0 H17 M-14.5 -9.5 H14.5 M-14.5 9.5 H14.5"/></g>';
+}
+function iconServer(x,y){
+  return '<g transform="translate('+x+','+y+')" fill="none" stroke="var(--ink)" stroke-width="2.4"><rect x="-17" y="-17" width="34" height="14" rx="3.5"/><rect x="-17" y="3" width="34" height="14" rx="3.5"/><circle cx="-9" cy="-10" r="2.1" fill="var(--ink)" stroke="none"/><circle cx="-9" cy="10" r="2.1" fill="var(--ink)" stroke="none"/></g>';
+}
+function isoCube(cx,cy,w,h,cTop,cLeft,cRight,icon,label,cls){
+  var a=w/2, b=h*0.24, top=cy-h/2, bot=cy+h/2;
+  var T=cx+","+top, RT=(cx+a)+","+(top+b), C=cx+","+(top+2*b), LT=(cx-a)+","+(top+b),
+      LB=(cx-a)+","+(bot-b), B=cx+","+bot, RB=(cx+a)+","+(bot-b);
+  return '<g'+(cls?' class="'+cls+'"':'')+'>'
+   +'<polygon points="'+LT+' '+C+' '+B+' '+LB+'" fill="'+cLeft+'" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>'
+   +'<polygon points="'+C+' '+RT+' '+RB+' '+B+'" fill="'+cRight+'" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>'
+   +'<polygon points="'+LT+' '+C+' '+B+' '+LB+'" fill="#000" opacity="0.06"/>'
+   +'<polygon points="'+C+' '+RT+' '+RB+' '+B+'" fill="#000" opacity="0.17"/>'
+   +'<polygon points="'+T+' '+RT+' '+C+' '+LT+'" fill="'+cTop+'" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>'
+   + icon(cx, cy-h*0.10)
+   +'<text class="ltr" x="'+cx+'" y="'+(cy+h*0.31)+'" text-anchor="middle" font-size="17.5" font-weight="700" fill="var(--ink)">'+label+'</text></g>';
+}
+function dbCyl(cx,cy,cls){
+  var w=95,h=110,rx=w/2,ry=14,top=cy-h/2+ry;
+  return '<g'+(cls?' class="'+cls+'"':'')+'>'
+   +'<path d="M '+(cx-rx)+' '+top+' L '+(cx-rx)+' '+(cy+h/2-ry)+' A '+rx+' '+ry+' 0 0 0 '+(cx+rx)+' '+(cy+h/2-ry)+' L '+(cx+rx)+' '+top+'" fill="url(#gDb)" stroke="var(--ink)" stroke-width="2.5"/>'
+   +'<ellipse cx="'+cx+'" cy="'+top+'" rx="'+rx+'" ry="'+ry+'" fill="#ddcdf8" stroke="var(--ink)" stroke-width="2.5"/>'
+   +'<g transform="translate('+cx+','+(cy+10)+')" fill="none" stroke="#fff" stroke-width="2.2" opacity="0.9"><ellipse rx="15" ry="5.5"/><path d="M-15 0 v13 a15 5.5 0 0 0 30 0 v-13"/></g>'
+   +'</g>'
+   + pill(cx+118, cy, 118, "database", false);
 }
 function cyl(cx,cy,w,h,top,body,label,dim){
   var rx=w/2, ry=Math.round(h*0.17);
@@ -537,69 +565,101 @@ function cyl(cx,cy,w,h,top,body,label,dim){
    +'<text class="ent-label" x="'+cx+'" y="'+(cy+h/2+28)+'" text-anchor="middle">'+label+'</text></g>';
 }
 function pill(cx,cy,w,text,fa){
-  return '<g><rect class="pill-bg" x="'+(cx-w/2)+'" y="'+(cy-13)+'" width="'+w+'" height="26" rx="13"/>'
-   +'<text class="'+(fa?"fa":"ltr")+'" x="'+cx+'" y="'+(cy+4.5)+'" text-anchor="middle" font-size="'+(fa?11.5:11)+'" font-weight="600" fill="var(--ink)">'+text+'</text></g>';
+  return '<g><rect class="pill-bg" x="'+(cx-w/2)+'" y="'+(cy-20)+'" width="'+w+'" height="40" rx="20"/>'
+   +'<text class="'+(fa?"fa":"ltr")+'" x="'+cx+'" y="'+(cy+6.5)+'" text-anchor="middle" font-size="'+(fa?16:18)+'" font-weight="600" fill="var(--ink)">'+text+'</text></g>';
 }
 function laptop(cx,cy,label){
+  var keys="",s,t,i,j;
+  for(i=0;i<3;i++) for(j=0;j<4;j++){
+    s=0.22+i*0.26; t=0.18+j*0.21;
+    keys+='<circle cx="'+(-62+62*s+62*t).toFixed(1)+'" cy="'+(-20-32*s+32*t).toFixed(1)+'" r="2.3" fill="#b3a68c"/>';
+  }
   return '<g transform="translate('+cx+','+cy+')">'
-   +'<rect x="-58" y="-54" width="116" height="80" rx="8" fill="var(--sheet)" stroke="var(--ink)" stroke-width="2"/>'
-   +'<rect x="-58" y="-54" width="116" height="17" rx="8" fill="var(--line)"/>'
-   +'<circle cx="-48" cy="-45.5" r="2.6" fill="var(--rust)"/><circle cx="-39" cy="-45.5" r="2.6" fill="var(--dns)"/><circle cx="-30" cy="-45.5" r="2.6" fill="var(--green-3)"/>'
-   +'<rect x="-21" y="-50" width="76" height="10" rx="5" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1"/>'
-   +'<text class="ltr" x="17" y="-42" text-anchor="middle" font-size="7.5" fill="var(--ink)">shop.example</text>'
-   +'<rect x="-46" y="-28" width="52" height="9" rx="3" fill="var(--green)"/>'
-   +'<rect x="-46" y="-14" width="92" height="6" rx="3" fill="var(--line)"/><rect x="-46" y="-4" width="78" height="6" rx="3" fill="var(--line)"/>'
-   +'<rect x="-46" y="8" width="26" height="14" rx="3" fill="var(--violet)"/><rect x="-14" y="8" width="26" height="14" rx="3" fill="var(--orange)"/><rect x="18" y="8" width="26" height="14" rx="3" fill="var(--mint)"/>'
-   +'<polygon points="-70,26 70,26 84,42 -84,42" fill="var(--card)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>'
-   +'<text class="fa" x="0" y="66" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">'+label+'</text></g>';
+   +'<ellipse cx="0" cy="80" rx="152" ry="17" fill="#000" opacity="0.13"/>'
+   +'<polygon points="-135,0 0,70 135,0 135,17 0,87 -135,17" fill="#e2d4b6" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>'
+   +'<polygon points="0,-70 135,0 0,70 -135,0" fill="#f7f0e0" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>'
+   +'<polygon points="-62,-20 0,-52 62,-20 0,12" fill="#e9e2d2" stroke="var(--ink)" stroke-width="2.2" stroke-linejoin="round"/>'
+   + keys
+   +'<polygon points="-62,-20 -71,-114 -9,-146 0,-52" fill="#33302b" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>'
+   +'<polygon points="-57,-31 -63,-105 -13,-131 -7,-59" fill="#f2ecf9" stroke="none"/>'
+   +'<polygon points="-58,-96 -14,-119 -12,-104 -56,-82" fill="#c9b6f2" stroke="none"/>'
+   +'<polygon points="-55,-72 -15,-92 -14,-84 -54,-65" fill="#ddd3c5" stroke="none"/>'
+   +'</g>'
+   + pill(cx, cy+122, 96, label, true);
 }
 
 /* ---- lesson 1 diagram ---- */
-function diagram1(s){
-  var p='<svg viewBox="0 0 760 460" role="img" aria-label="دیاگرام سفر درخواست">';
-  p+='<defs>'
-    +'<path id="p_d1" d="M 168 268 C 185 215, 198 185, 206 162"/>'
-    +'<path id="p_d2" d="M 226 164 C 234 192, 224 228, 196 272"/>'
-    +'<path id="p_s1" d="M 212 292 C 300 215, 420 165, 492 138"/>'
-    +'<path id="p_s2" d="M 492 158 C 415 192, 300 246, 214 308"/>'
-    +'<path id="p_b1" d="M 594 154 C 614 200, 620 232, 615 260"/>'
-    +'<path id="p_b2" d="M 554 260 C 546 224, 546 196, 540 160"/>'
-    +'<path id="p_fr" d="M 212 292 C 300 215, 420 165, 492 138 C 548 146, 606 196, 615 256"/>'
-    +'<path id="p_fb" d="M 554 256 C 544 210, 516 168, 466 150 C 380 176, 282 242, 214 308"/>'
-    +'</defs>';
-  if(s>=1){ p+='<use href="#p_d1" class="dash-line"/><use href="#p_d2" class="dash-line"/>'; }
-  if(s>=2){ p+='<use href="#p_s1" class="dash-line"/><use href="#p_s2" class="dash-line"/>'; }
-  if(s>=4){ p+='<use href="#p_b1" class="dash-line"/><use href="#p_b2" class="dash-line"/>'; }
-  if(s>=1) p+=pill(150,208,172,"shop.example کجاست؟",true);
-  if(s>=4) p+=pill(583,208,176,"SELECT … FROM products",false);
-  /* moving dots per step */
-  if(s===1){ p+=dots("p_d1",C_REQ,2,2.2)+dots("p_d2",C_REQ,2,2.2); }
-  if(s===2){ p+=dots("p_s1",C_HS,2,2)+dots("p_s2",C_HS,2,2); }
-  if(s===3){ p+=dots("p_s1",C_REQ,1,1.9)+dots("p_s2",C_RES,1,1.9); }
-  if(s===4){ p+=dots("p_fr",C_REQ,2,3.6)+dots("p_fb",C_RES,2,3.6); }
-  if(s===5){ p+=dots("p_fb",C_RES,2,3.4)+dots("p_s1",C_REQ,1,2.6); }
-  if(s===6){ p+=dots("p_s1",C_REQ,4,2.8)+dots("p_s2",C_RES,4,2.8); }
-  if(s===7){ p+=dots("p_s1",C_REQ,1,3)+dots("p_b1",C_REQ,1,5)
-    +'<circle cx="516" cy="296" r="6.5" fill="'+C_REQ+'" stroke="var(--ink)" stroke-width="1.5"/>'
-    +'<circle cx="496" cy="314" r="6.5" fill="'+C_REQ+'" stroke="var(--ink)" stroke-width="1.5"/>'
-    +'<circle cx="524" cy="326" r="6.5" fill="'+C_REQ+'" stroke="var(--ink)" stroke-width="1.5"/>'; }
-  if(s===8){ p+=dots("p_s1",C_REQ,2,6.5)+dots("p_s2",C_RES,1,6.5); }
-  /* entities */
-  if(s>=1) p+=cube(215,112,42,"#f7d774","#eebd2e","#d9a41c","DNS resolver",s>=2);
-  if(s>=1) p+=pill(215,40,124,"→ 203.0.113.7",false);
-  if(s>=2) p+=cube(545,112,42,"#a8c8ef","#6f9fdc","#4a7fc4","Web Server",false);
-  if(s>=4) p+=cyl(575,318,94,102,"#c9b6f2","#a98fe3","database",false);
-  p+=laptop(150,330, s>=8 ? "تو · Sydney" : "تو");
-  return p+"</svg>";
-}
-function timebars1(){
-  var rows=[["DNS lookup",20,"var(--dns)"],["TCP + TLS handshake",60,"var(--hs)"],["request + server",55,"var(--server)"],["download",20,"var(--res)"]];
-  var h='<div class="timebars"><h4><span class="en3">WHERE TIME WENT</span> — زمان کجا رفت</h4>';
-  rows.forEach(function(r){
-    h+='<div class="tb-row"><span class="tl">'+r[0]+'</span><div class="tb-track"><div class="tb-fill" data-w="'+(r[1]/60*100)+'" style="background:'+r[2]+'"></div></div><span class="tv">'+r[1]+' ms</span></div>';
+function whereTimeTable(){
+  var rows=[["DNS lookup","20 ms"],["TCP + TLS handshake","60 ms"],["request + server","55 ms"],["download","20 ms"]];
+  var h='<g transform="translate(841,481)"><rect width="335" height="170" rx="12" fill="var(--sheet)" stroke="var(--ink)" stroke-width="2.5"/>'
+    +'<text class="ltr" x="20" y="32" font-size="13" font-weight="800" letter-spacing="1" fill="var(--ink)">WHERE TIME WENT</text>';
+  rows.forEach(function(r,i){
+    var y=62+i*24;
+    h+='<text class="ltr" x="20" y="'+y+'" font-size="13.5" fill="var(--ink)">'+r[0]+'</text>'
+      +'<text class="ltr" x="315" y="'+y+'" text-anchor="end" font-size="13.5" font-weight="700" fill="var(--ink)">'+r[1]+'</text>';
   });
-  h+='<div class="tb-total">= مجموع <b>155 ms</b> — ۱۳۰ میلی‌ثانیه‌اش انتظار در شبکه بود.</div></div>';
+  h+='<line x1="20" y1="140" x2="315" y2="140" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="4 4"/>'
+    +'<text class="ltr" x="20" y="161" font-size="13.5" font-weight="800" fill="var(--ink)">TOTAL</text>'
+    +'<text class="ltr" x="315" y="161" text-anchor="end" font-size="13.5" font-weight="800" fill="var(--ink)">155 ms</text></g>';
   return h;
+}
+function diagram1(s){
+  var p='<svg viewBox="0 0 1200 675" role="img" aria-label="دیاگرام سفر درخواست">';
+  p+='<defs>'
+    +'<pattern id="isoG" width="42" height="24.25" patternUnits="userSpaceOnUse">'
+    +'<path d="M0 24.25 L42 0 M-21 12.13 L21 -12.13 M21 36.38 L63 12.13" stroke="var(--line)" stroke-width="1" fill="none"/>'
+    +'<path d="M0 0 L42 24.25 M-21 12.13 L21 36.38 M21 -12.13 L63 12.13" stroke="var(--line)" stroke-width="1" fill="none"/>'
+    +'</pattern>'
+    +'<linearGradient id="gDb" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c9b3f2"/><stop offset=".5" stop-color="#b79df0"/><stop offset="1" stop-color="#9a7ede"/></linearGradient>'
+    +'<marker id="arr" viewBox="0 0 10 10" refX="8.2" refY="5" markerWidth="5.2" markerHeight="5.2" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--ink)"/></marker>'
+    +'<path id="p_dns" d="M 428 348 C 472 292, 516 262, 562 238"/>'
+    +'<path id="p_srv" d="M 452 322 C 600 258, 730 232, 862 214"/>'
+    +'<path id="p_srvR" d="M 862 214 C 730 232, 600 258, 452 322"/>'
+    +'<path id="p_db" d="M 984 248 C 998 296, 1001 338, 1000 382"/>'
+    +'<path id="p_dbR" d="M 1000 382 C 1001 338, 998 296, 984 248"/>'
+    +'</defs>';
+  p+='<rect x="0" y="0" width="1200" height="675" fill="url(#isoG)" opacity="0.55"/>';
+  var solid='fill="none" stroke="var(--ink)" stroke-width="2.8" stroke-linecap="round" marker-end="url(#arr)"';
+  /* connections */
+  if(s>=1) p+='<use href="#p_dns" fill="none" stroke="var(--muted)" stroke-width="2.2" stroke-dasharray="6 6"/>';
+  if(s>=3&&s!==9) p+='<use href="#p_srv" '+solid+'/>';
+  if(s>=4) p+='<use href="#p_db" '+solid+'/>';
+  if(s===9){ p+='<use href="#p_srv" '+solid+'/><use href="#p_db" '+solid+'/>'; }
+  if(s===2){
+    /* handshake: plays once, then fades out — settled step 3 shows nodes only */
+    p+='<g><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.82;1" dur="3.4s" fill="freeze"/>'
+      +'<use href="#p_srv" '+solid+'/>'
+      + dots("p_srv",C_HS,2,2.6)+dots("p_srvR",C_HS,2,2.6)
+      +'</g>';
+  }
+  /* moving dots per step */
+  if(s===1){ p+=dots("p_dns",C_REQ,2,2.4); }
+  if(s===3){ p+=dots("p_srv",C_REQ,1,1.9)+dots("p_srvR",C_RES,1,1.9); }
+  if(s===4){ p+=dots("p_srv",C_REQ,1,2.6)+dots("p_db",C_REQ,1,2.6)+dots("p_dbR",C_RES,1,2.6)+dots("p_srvR",C_RES,1,2.6); }
+  if(s===5){ p+=dots("p_dbR",C_RES,1,3.2)+dots("p_srvR",C_RES,2,3.2); }
+  if(s===6){ p+=dots("p_srv",C_REQ,4,2.8)+dots("p_srvR",C_RES,4,2.8); }
+  if(s===7){ p+=dots("p_srv",C_REQ,1,3)+dots("p_db",C_REQ,4,6); }
+  if(s===8){ p+=dots("p_srv",C_REQ,2,6.5)+dots("p_srvR",C_RES,1,6.5); }
+  /* labels / pills */
+  if(s===0) p+=pill(330,252,264,"https://shop.example",false);
+  if(s>=1) p+=pill(620,38,158,"203.0.113.7",false);
+  if(s===1) p+=pill(398,252,208,"shop.example کجاست؟",true);
+  if(s===4){
+    p+=pill(622,302,196,"GET /products",false);
+    p+=pill(848,392,192,"cached · 5 min",false);
+    p+=pill(848,448,84,"30%",false);
+  }
+  if(s===7){
+    p+=pill(826,296,224,"400 ms · scanning",false);
+    p+=pill(782,348,308,"ORDER BY score · 400 ms",false);
+  }
+  /* entities */
+  if(s>=1) p+=isoCube(620,150,185,155,"#f9dc6e","#f2c230","#e0aa1e",iconGlobe,"DNS resolver", s===1?"node-in":null);
+  if(s>=2) p+=isoCube(960,155,180,170,"#bcd6f5","#6f9fdc","#4a7fc4",iconServer,"Web Server", s===2?"node-in":null);
+  if(s>=4) p+=dbCyl(1000,445, s===4?"node-in":null);
+  p+=laptop(330,455, s>=8 ? "تو · Sydney" : "تو");
+  if(s===9) p+=whereTimeTable();
+  return p+"</svg>";
 }
 
 /* ---- lesson 2 diagram ---- */
@@ -716,7 +776,7 @@ function diagram3(s){
   return p+"</svg>";
 }
 function stageHTML(slug,s){
-  if(slug==="request-lifecycle") return s===9?timebars1():diagram1(s);
+  if(slug==="request-lifecycle") return diagram1(s);
   if(slug==="latency-throughput") return diagram2(s);
   if(slug==="napkin-math") return diagram3(s);
   return "";
@@ -816,7 +876,7 @@ function render(){
   /* metrics */
   h+='<div class="metrics '+(det.metrics.length===5?"c5":"c4")+'">';
   det.metrics.forEach(function(m,i){
-    h+='<div class="metric'+(i===det.metrics.length-1&&(l.slug!=="latency-throughput")?" total":"")+'"><div class="mlabel">'+m[0]+'</div><div class="mval"><span id="mv'+i+'">—</span><small id="mu'+i+'"></small></div></div>';
+    h+='<div class="metric'+(i===det.metrics.length-1&&(l.slug!=="latency-throughput")&&st.metrics&&st.metrics[i]!=null?" total":"")+'"><div class="mlabel">'+m[0]+'</div><div class="mval"><span id="mv'+i+'">—</span><small id="mu'+i+'"></small></div></div>';
   });
   h+='</div>';
   /* grid: panel + stage */
@@ -862,10 +922,13 @@ function render(){
   h+='</div>';
   /* strip + controls */
   h+='<div class="strip-card"><div class="strip-top"><h3><span class="en3">IN THIS LESSON</span> — در این درس</h3><span class="step-count">مرحله‌ی '+faNum(state.step)+' از '+faNum(total)+' · '+st.name+'</span></div><div class="circles">';
+  var SHORT1=["Hit Enter","Find address","Connect","Request","Fetch data","Response","More files","Slow query","Far away","Recap"];
   det.steps.forEach(function(s2,i){
-    h+='<button type="button" data-step="'+(i+1)+'" class="'+(i+1===state.step?"cur":(i+1<state.step?"done":""))+'" aria-label="مرحله‌ی '+faNum(i+1)+': '+s2.name+'">'+(i+1)+'</button>';
+    var lbl=(l.slug==="request-lifecycle")?SHORT1[i]:s2.name;
+    h+='<div class="citem'+(i+1===state.step?" cur":"")+'"><button type="button" data-step="'+(i+1)+'" class="'+(i+1===state.step?"cur":(i+1<state.step?"done":""))+'" aria-label="مرحله‌ی '+faNum(i+1)+': '+s2.name+'">'+(i+1)+'</button><span class="clabel"'+(l.slug==="request-lifecycle"?' dir="ltr"':'')+'>'+lbl+'</span></div>';
   });
   h+='</div><div class="controls">'
+
     +'<button type="button" class="btn" id="btnBack"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>قبلی</button>'
     +'<button type="button" class="btn primary" id="btnNext">بعدی<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>'
     +'<button type="button" class="btn" id="btnReplay"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>تکرار</button>'
@@ -920,19 +983,22 @@ function prevStep(){
   if(pv){ var pd=DETAILS[pv.slug]; goLesson(pv.slug, pd?pd.steps.length:1, playing); }
 }
 function replay(){ state.step=1; playing=true; setHash(); render(); }
+function applyPlayState(){
+  var svgs=document.querySelectorAll("#stageCard svg");
+  for(var i=0;i<svgs.length;i++){
+    if(playing){ if(svgs[i].unpauseAnimations) svgs[i].unpauseAnimations(); }
+    else if(svgs[i].pauseAnimations) svgs[i].pauseAnimations();
+  }
+}
 function togglePlay(){
   var l=bySlug[state.slug], det=DETAILS[l.slug];
   if(!det) return;
-  if(!playing&&state.step>=det.steps.length){ replay(); return; }
-  playing=!playing; updatePlayBtn(); schedule();
+  playing=!playing; updatePlayBtn(); applyPlayState();
 }
 function stopTimer(){ if(timer){ clearTimeout(timer); timer=null; } }
 function schedule(){
-  stopTimer();
-  var l=bySlug[state.slug], det=DETAILS[l.slug];
-  if(!playing||!det) return;
-  if(state.step>=det.steps.length){ playing=false; updatePlayBtn(); return; }
-  timer=setTimeout(function(){ nextStep(); },7000);
+  /* no auto-advance: steps never move on their own; Pause only freezes the moving dots */
+  stopTimer(); applyPlayState();
 }
 function route(){
   var m=location.hash.match(/^#\/([a-z0-9-]+)(?:\/(\d+))?/);
@@ -1024,10 +1090,7 @@ document.addEventListener("keydown",function(e){
 });
 
 /* ---------- init ---------- */
-if(window.matchMedia("(prefers-color-scheme: dark)").matches){
-  document.documentElement.setAttribute("data-theme","dark");
-  $("themeIconMoon").style.display="none"; $("themeIconSun").style.display="";
-}
+/* always start in light theme, regardless of the OS setting; dark only via the theme button */
 route();
 </script>
 </body>
